@@ -1,0 +1,5 @@
+{
+  "assessment_folder_id": "PASTE_GOOGLE_DRIVE_ASSESSMENT_FOLDER_ID_HERE",
+  "output_report_suffix": "_generated_report.docx",
+  "allow_overwrite_for_testing": false
+}
