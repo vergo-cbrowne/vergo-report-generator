@@ -1,0 +1,8 @@
+.env
+credentials/
+credentials/service-account.json
+token.json
+config/settings.json
+report_generation_log.csv
+__pycache__/
+*.pyc
