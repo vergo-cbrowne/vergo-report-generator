@@ -6,3 +6,5 @@ config/settings.json
 report_generation_log.csv
 __pycache__/
 *.pyc
+samples/
+templates/Vergo_Report_Template.docx
