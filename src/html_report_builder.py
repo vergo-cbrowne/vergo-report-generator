@@ -15,6 +15,39 @@ DISCLAIMER_TEXT = (
 )
 
 
+BODY_KEYS = [
+    "body",
+    "Body",
+    "content",
+    "Content",
+    "details",
+    "Details",
+    "explanation",
+    "Explanation",
+    "description",
+    "Description",
+    "recommendation",
+    "Recommendation",
+    "reason",
+    "Reason",
+    "rationale",
+    "Rationale",
+    "paragraph",
+    "Paragraph",
+    "paragraphs",
+    "Paragraphs",
+]
+
+HEADING_KEYS = [
+    "heading",
+    "Heading",
+    "module",
+    "Module",
+    "title",
+    "Title",
+]
+
+
 def _clean_text(value) -> str:
     if value is None:
         return ""
@@ -41,9 +74,26 @@ def _clean_text(value) -> str:
 
 def _display_value(value) -> str:
     text = _clean_text(value)
-    if not text or text.lower() in {"none", "null", "n/a", "not available"}:
+    if not text or text.lower() in {"none", "null", "n/a", "not available", "not specified"}:
         return "Not specified"
     return text
+
+
+def _get_first_value(data: dict, keys: list[str]) -> str:
+    for key in keys:
+        value = data.get(key)
+        cleaned = _clean_text(value)
+        if cleaned:
+            return cleaned
+    return ""
+
+
+def _get_body_value(item: dict) -> str:
+    return _get_first_value(item, BODY_KEYS)
+
+
+def _get_heading_value(item: dict) -> str:
+    return _get_first_value(item, HEADING_KEYS)
 
 
 def _p(value) -> str:
@@ -85,16 +135,78 @@ def _section(title: str, body: str, css_class: str = "") -> str:
 
 
 def _get_cover_details(report_data: dict) -> dict:
-    cover = report_data.get("cover_details", {})
+    cover = report_data.get("cover_details", {}) or {}
+
+    task_name = (
+        cover.get("Task name/title")
+        or cover.get("Task Name")
+        or cover.get("Task")
+        or report_data.get("task_name")
+        or report_data.get("task")
+        or report_data.get("title")
+        or ""
+    )
+
+    client_name = (
+        cover.get("Company/Client name")
+        or cover.get("Company")
+        or cover.get("Client")
+        or report_data.get("client_name")
+        or report_data.get("company")
+        or report_data.get("client")
+        or ""
+    )
+
+    site_location = (
+        cover.get("Site location or facility name")
+        or cover.get("Site / Location")
+        or cover.get("Site Location")
+        or cover.get("Location")
+        or report_data.get("site_location")
+        or report_data.get("location")
+        or ""
+    )
+
+    assessment_date = (
+        cover.get("Assessment date")
+        or cover.get("Assessment Date")
+        or report_data.get("assessment_date")
+        or report_data.get("date")
+        or ""
+    )
+
+    assessment_method = (
+        cover.get("Assessment method")
+        or cover.get("Assessment Method")
+        or report_data.get("assessment_method")
+        or report_data.get("method")
+        or "RULA"
+    )
+
+    video_duration = (
+        cover.get("Video duration")
+        or cover.get("Video Duration")
+        or report_data.get("video_duration")
+        or report_data.get("duration")
+        or ""
+    )
+
+    assessor = (
+        cover.get("Assessor name")
+        or cover.get("Assessor")
+        or report_data.get("assessor")
+        or report_data.get("assessor_name")
+        or ""
+    )
 
     return {
-        "task_name": _display_value(cover.get("Task name/title", "")),
-        "client_name": _display_value(cover.get("Company/Client name", "")),
-        "site_location": _display_value(cover.get("Site location or facility name", "")),
-        "assessment_date": _display_value(cover.get("Assessment date", "")),
-        "assessment_method": _display_value(cover.get("Assessment method", "")),
-        "video_duration": _display_value(cover.get("Video duration", "")),
-        "assessor": _display_value(cover.get("Assessor name", "")),
+        "task_name": _display_value(task_name),
+        "client_name": _display_value(client_name),
+        "site_location": _display_value(site_location),
+        "assessment_date": _display_value(assessment_date),
+        "assessment_method": _display_value(assessment_method),
+        "video_duration": _display_value(video_duration),
+        "assessor": _display_value(assessor),
     }
 
 
@@ -112,37 +224,8 @@ def _render_heading_body_items(items) -> str:
             html += _p(item)
             continue
 
-        heading = (
-            item.get("heading")
-            or item.get("Heading")
-            or item.get("module")
-            or item.get("Module")
-            or item.get("title")
-            or item.get("Title")
-        )
-
-        body = (
-            item.get("body")
-            or item.get("Body")
-            or item.get("content")
-            or item.get("Content")
-            or item.get("details")
-            or item.get("Details")
-            or item.get("explanation")
-            or item.get("Explanation")
-            or item.get("description")
-            or item.get("Description")
-            or item.get("recommendation")
-            or item.get("Recommendation")
-            or item.get("reason")
-            or item.get("Reason")
-            or item.get("rationale")
-            or item.get("Rationale")
-            or item.get("paragraph")
-            or item.get("Paragraph")
-            or item.get("paragraphs")
-            or item.get("Paragraphs")
-        )
+        heading = _get_heading_value(item)
+        body = _get_body_value(item)
 
         if heading:
             html += '<div class="subsection-block">\n'
@@ -287,12 +370,7 @@ def _render_summary(report_data: dict) -> str:
 
     for item in risk_items:
         if isinstance(item, dict):
-            heading = (
-                item.get("heading")
-                or item.get("Heading")
-                or item.get("title")
-                or item.get("Title")
-            )
+            heading = _get_heading_value(item)
 
             if not heading and len(item) == 1:
                 heading = next(iter(item.keys()))
@@ -325,7 +403,86 @@ def _render_summary(report_data: dict) -> str:
     return html
 
 
+def _validate_heading_body_list(report_data: dict, field_name: str, section_label: str) -> list[str]:
+    errors = []
+    items = report_data.get(field_name)
+
+    if not isinstance(items, list) or not items:
+        errors.append(f"{section_label} must be a non-empty list.")
+        return errors
+
+    for index, item in enumerate(items, start=1):
+        if not isinstance(item, dict):
+            errors.append(f"{section_label} item {index} must be an object with heading/content fields.")
+            continue
+
+        heading = _get_heading_value(item)
+        body = _get_body_value(item)
+
+        if not heading:
+            errors.append(f"{section_label} item {index} is missing a heading.")
+        if not body:
+            errors.append(f"{section_label} item {index} is missing body/content text.")
+
+    return errors
+
+
+def validate_report_data(report_data: dict) -> None:
+    errors = []
+
+    assessment_overview = _clean_text(report_data.get("assessment_overview"))
+    if not assessment_overview:
+        errors.append("Section 1 assessment_overview is empty.")
+
+    summary_html = _render_summary(report_data)
+    if not summary_html.strip():
+        errors.append("Section 2 score summary is empty.")
+
+    errors.extend(
+        _validate_heading_body_list(
+            report_data,
+            "risk_exposure_analysis",
+            "Section 3 risk_exposure_analysis",
+        )
+    )
+
+    overall_observations = _clean_text(report_data.get("overall_observations"))
+    if not overall_observations:
+        errors.append("Section 4 overall_observations is empty.")
+
+    errors.extend(
+        _validate_heading_body_list(
+            report_data,
+            "recommendations",
+            "Section 5 recommendations",
+        )
+    )
+
+    training_videos = report_data.get("training_videos")
+    if not isinstance(training_videos, list) or not training_videos:
+        errors.append("Section 6 training_videos must be a non-empty list.")
+    else:
+        for index, item in enumerate(training_videos, start=1):
+            if not isinstance(item, dict):
+                errors.append(f"Section 6 training_videos item {index} must be an object.")
+                continue
+
+            module = item.get("module") or item.get("Module") or item.get("heading") or item.get("Heading")
+            content = _get_body_value(item)
+
+            if not _clean_text(module):
+                errors.append(f"Section 6 training_videos item {index} is missing a module name.")
+            if not content:
+                errors.append(f"Section 6 training_videos item {index} is missing rationale/content.")
+
+    if errors:
+        message = "Report validation failed:\n" + "\n".join(f"- {error}" for error in errors)
+        raise ValueError(message)
+
+
 def build_html_report(report_data: dict, output_path: str | Path) -> Path:
+    validate_report_data(report_data)
+
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
