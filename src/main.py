@@ -1,11 +1,14 @@
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
+
 import google_drive
 import assessment_loader
 import report_generator
 import docx_builder
+import html_report_builder
 
 
 def parse_args():
@@ -41,12 +44,27 @@ def main():
         report_data,
         snapshot_files,
         args.model,
+        style_guide_path="prompts/vergo_writing_style_guide.md",
     )
+
+    output_dir = Path("output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print("Creating HTML report...")
+    html_report_path = output_dir / "vergo_report.html"
+    html_report_builder.build_html_report(generated_report, html_report_path)
+    print(f"Local HTML report saved to: {html_report_path.resolve()}")
 
     print("Creating Word document...")
     docx_bytes = docx_builder.build_docx(generated_report)
 
-    print("Uploading report...")
+    local_report_path = output_dir / "vergo_report.docx"
+    with local_report_path.open("wb") as output_file:
+        output_file.write(docx_bytes)
+
+    print(f"Local Word report saved to: {local_report_path.resolve()}")
+
+    print("Uploading Word report...")
     report_filename = "vergo_report.docx"
     uploaded_file = google_drive.upload_file(
         service,
@@ -61,8 +79,10 @@ def main():
         "status": "completed",
         "reportFile": report_filename,
         "reportFileId": uploaded_file.get("id"),
-        "uploadedAt": datetime.utcnow().isoformat() + "Z",
+        "htmlReportFile": "vergo_report.html",
+        "uploadedAt": datetime.now(timezone.utc).isoformat(),
     }
+
     google_drive.create_or_update_json_file(
         service,
         args.assessment_folder_id,
