@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 import google_drive
 import assessment_loader
 import report_generator
-import docx_builder
 import html_report_builder
+import pdf_builder
 
 
 def parse_args():
@@ -55,23 +55,21 @@ def main():
     html_report_builder.build_html_report(generated_report, html_report_path)
     print(f"Local HTML report saved to: {html_report_path.resolve()}")
 
-    print("Creating Word document...")
-    docx_bytes = docx_builder.build_docx(generated_report)
+    print("Creating PDF report...")
+    pdf_report_path = output_dir / "vergo_report.pdf"
+    pdf_builder.build_pdf_from_html(html_report_path, pdf_report_path)
+    print(f"Local PDF report saved to: {pdf_report_path.resolve()}")
 
-    local_report_path = output_dir / "vergo_report.docx"
-    with local_report_path.open("wb") as output_file:
-        output_file.write(docx_bytes)
+    print("Uploading PDF report...")
+    report_filename = "vergo_report.pdf"
+    pdf_bytes = pdf_report_path.read_bytes()
 
-    print(f"Local Word report saved to: {local_report_path.resolve()}")
-
-    print("Uploading Word report...")
-    report_filename = "vergo_report.docx"
     uploaded_file = google_drive.upload_file(
         service,
         args.assessment_folder_id,
         report_filename,
-        docx_bytes,
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        pdf_bytes,
+        "application/pdf",
     )
 
     print("Updating status.json...")
@@ -80,6 +78,7 @@ def main():
         "reportFile": report_filename,
         "reportFileId": uploaded_file.get("id"),
         "htmlReportFile": "vergo_report.html",
+        "pdfReportFile": "vergo_report.pdf",
         "uploadedAt": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -91,6 +90,8 @@ def main():
     )
 
     print("Done.")
+    print(f"HTML output: {html_report_path.resolve()}")
+    print(f"PDF output: {pdf_report_path.resolve()}")
 
 
 if __name__ == "__main__":

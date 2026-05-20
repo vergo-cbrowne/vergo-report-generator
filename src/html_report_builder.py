@@ -39,6 +39,13 @@ def _clean_text(value) -> str:
     return text.strip()
 
 
+def _display_value(value) -> str:
+    text = _clean_text(value)
+    if not text or text.lower() in {"none", "null", "n/a", "not available"}:
+        return "Not specified"
+    return text
+
+
 def _p(value) -> str:
     text = _clean_text(value)
     if not text:
@@ -64,9 +71,13 @@ def _ul(items) -> str:
     return f"<ul>\n{lis}\n</ul>" if lis else ""
 
 
-def _section(title: str, body: str) -> str:
+def _section(title: str, body: str, css_class: str = "") -> str:
+    class_attr = "report-section"
+    if css_class:
+        class_attr += f" {css_class}"
+
     return f"""
-<section class="report-section">
+<section class="{class_attr}">
   <h2>{escape(title)}</h2>
   {body}
 </section>
@@ -77,13 +88,13 @@ def _get_cover_details(report_data: dict) -> dict:
     cover = report_data.get("cover_details", {})
 
     return {
-        "task_name": cover.get("Task name/title", ""),
-        "client_name": cover.get("Company/Client name", ""),
-        "site_location": cover.get("Site location or facility name", ""),
-        "assessment_date": cover.get("Assessment date", ""),
-        "assessment_method": cover.get("Assessment method", ""),
-        "video_duration": cover.get("Video duration", ""),
-        "assessor": cover.get("Assessor name", ""),
+        "task_name": _display_value(cover.get("Task name/title", "")),
+        "client_name": _display_value(cover.get("Company/Client name", "")),
+        "site_location": _display_value(cover.get("Site location or facility name", "")),
+        "assessment_date": _display_value(cover.get("Assessment date", "")),
+        "assessment_method": _display_value(cover.get("Assessment method", "")),
+        "video_duration": _display_value(cover.get("Video duration", "")),
+        "assessor": _display_value(cover.get("Assessor name", "")),
     }
 
 
@@ -117,6 +128,12 @@ def _render_heading_body_items(items) -> str:
             or item.get("Content")
             or item.get("details")
             or item.get("Details")
+            or item.get("explanation")
+            or item.get("Explanation")
+            or item.get("description")
+            or item.get("Description")
+            or item.get("recommendation")
+            or item.get("Recommendation")
             or item.get("reason")
             or item.get("Reason")
             or item.get("rationale")
@@ -128,20 +145,20 @@ def _render_heading_body_items(items) -> str:
         )
 
         if heading:
+            html += '<div class="subsection-block">\n'
             html += f"<h3>{escape(_clean_text(heading))}</h3>\n"
             html += _p(body)
+            html += "\n</div>\n"
             continue
 
-        # Handles this older format:
-        # {"Wrist Posture and Deviation": "Body paragraph"}
         if len(item) == 1:
             key, value = next(iter(item.items()))
+            html += '<div class="subsection-block">\n'
             html += f"<h3>{escape(_clean_text(key))}</h3>\n"
             html += _p(value)
+            html += "\n</div>\n"
             continue
 
-        # Fallback for dictionaries with unfamiliar keys.
-        # Avoid printing labels like "heading", "paragraphs", "content" as report text.
         for key, value in item.items():
             key_lower = str(key).lower()
 
@@ -151,6 +168,9 @@ def _render_heading_body_items(items) -> str:
                 "body",
                 "content",
                 "details",
+                "explanation",
+                "description",
+                "recommendation",
                 "reason",
                 "rationale",
                 "paragraph",
@@ -158,8 +178,10 @@ def _render_heading_body_items(items) -> str:
             }:
                 html += _p(value)
             else:
+                html += '<div class="subsection-block">\n'
                 html += f"<h3>{escape(_clean_text(key))}</h3>\n"
                 html += _p(value)
+                html += "\n</div>\n"
 
     return html
 
@@ -250,8 +272,6 @@ def _render_summary(report_data: dict) -> str:
     if html.strip():
         return html
 
-    # Fallback if the AI does not return a usable Section 2 object.
-    # This prevents the report from having a blank Section 2.
     assessment_method = (
         report_data.get("cover_details", {}).get("Assessment method")
         or "the selected ergonomic assessment method"
@@ -311,126 +331,226 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
 
     metadata = _get_cover_details(report_data)
 
+    logo_path = Path("assets/vergo-logo.png").resolve()
+    logo_src = logo_path.as_uri() if logo_path.exists() else ""
+
+    if not logo_src:
+        print("WARNING: assets/vergo-logo.png not found. Falling back to text logo.")
+
+    logo_html = (
+        f'<img class="brand-logo" src="{logo_src}" alt="Vergo logo">'
+        if logo_src
+        else '<div class="brand-mark">V</div>'
+    )
+
     assessment_overview = _p(report_data.get("assessment_overview", ""))
-
     summary_body = _render_summary(report_data)
-
-    risk_body = _render_heading_body_items(
-        report_data.get("risk_exposure_analysis", [])
-    )
-
+    risk_body = _render_heading_body_items(report_data.get("risk_exposure_analysis", []))
     observations_body = _p(report_data.get("overall_observations", ""))
-
-    recommendations_body = _render_heading_body_items(
-        report_data.get("recommendations", [])
-    )
-
-    training_body = _render_heading_body_items(
-        report_data.get("training_videos", [])
-    )
+    recommendations_body = _render_heading_body_items(report_data.get("recommendations", []))
+    training_body = _render_heading_body_items(report_data.get("training_videos", []))
 
     html = f"""<!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Vergo Ergonomic Assessment Report</title>
+  <title>Vergo Movement Analysis Risk Report</title>
   <style>
+    :root {{
+      --vergo-blue: #1f4e79;
+      --vergo-blue-dark: #173a5c;
+      --vergo-blue-light: #eaf2f8;
+      --text: #111827;
+      --muted: #5b6770;
+      --border: #c9d7e5;
+    }}
+
+    * {{
+      box-sizing: border-box;
+    }}
+
     body {{
-      font-family: Arial, sans-serif;
-      color: #111;
-      line-height: 1.4;
-      margin: 48px;
-      font-size: 11.5pt;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      line-height: 1.42;
+      margin: 44px;
+      font-size: 11.2pt;
+      background: #ffffff;
+    }}
+
+    .topbar {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 4px solid var(--vergo-blue);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }}
+
+    .brand {{
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }}
+
+    .brand-logo {{
+      width: 135px;
+      max-height: 64px;
+      object-fit: contain;
+      display: block;
+    }}
+
+    .brand-mark {{
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--vergo-blue);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13pt;
+      letter-spacing: 0.5px;
+    }}
+
+    .report-label {{
+      color: var(--muted);
+      font-size: 10pt;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 800;
+      text-align: right;
+      line-height: 1.35;
     }}
 
     .cover {{
-      border-bottom: 3px solid #1f4e79;
-      margin-bottom: 28px;
-      padding-bottom: 18px;
+      margin-bottom: 24px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-left: 6px solid var(--vergo-blue);
+      background: var(--vergo-blue-light);
+      border-radius: 10px;
     }}
 
-    h1 {{
-      color: #1f4e79;
-      font-size: 24pt;
-      margin-bottom: 8px;
+    .metadata {{
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 7px 16px;
+      font-size: 10.8pt;
+    }}
+
+    .label {{
+      font-weight: 700;
+      color: var(--vergo-blue-dark);
     }}
 
     h2 {{
-      color: #1f4e79;
-      font-size: 16pt;
-      border-bottom: 1.5px solid #1f4e79;
+      color: var(--vergo-blue);
+      font-size: 15.5pt;
+      border-bottom: 1.5px solid var(--vergo-blue);
       padding-bottom: 5px;
-      margin-top: 28px;
+      margin-top: 26px;
       margin-bottom: 12px;
+      page-break-after: avoid;
+      break-after: avoid;
     }}
 
     h3 {{
-      font-size: 12.5pt;
-      margin-top: 16px;
+      font-size: 12.2pt;
+      margin-top: 14px;
       margin-bottom: 5px;
-      font-weight: bold;
+      font-weight: 800;
+      color: #111827;
+      page-break-after: avoid;
+      break-after: avoid;
     }}
 
     p {{
       margin-top: 0;
-      margin-bottom: 11px;
+      margin-bottom: 10px;
     }}
 
     ul {{
       margin-top: 4px;
       margin-bottom: 14px;
+      padding-left: 22px;
     }}
 
     li {{
       margin-bottom: 5px;
     }}
 
-    .metadata {{
-      display: grid;
-      grid-template-columns: 170px 1fr;
-      gap: 6px 14px;
-      margin-top: 20px;
-      font-size: 11pt;
+    .report-section {{
+      margin-bottom: 18px;
+      page-break-inside: auto;
+      break-inside: auto;
     }}
 
-    .label {{
-      font-weight: bold;
-      color: #333;
+    .subsection-block {{
+      page-break-inside: avoid;
+      break-inside: avoid;
+      margin-bottom: 10px;
     }}
 
     .footer-note {{
-      margin-top: 36px;
+      margin-top: 34px;
       padding-top: 10px;
-      border-top: 1px solid #ccc;
-      color: #555;
+      border-top: 1px solid #d1d5db;
+      color: var(--muted);
       font-size: 9pt;
+    }}
+
+    .disclaimer-section {{
+      page-break-before: auto;
+      break-before: auto;
     }}
 
     @media print {{
       body {{
-        margin: 36px;
+        margin: 0;
       }}
 
-      .report-section {{
+      .topbar {{
         page-break-inside: avoid;
+        break-inside: avoid;
+      }}
+
+      .cover {{
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }}
+
+      .subsection-block {{
+        page-break-inside: avoid;
+        break-inside: avoid;
       }}
     }}
   </style>
 </head>
 
 <body>
-  <div class="cover">
-    <h1>Vergo Ergonomic Assessment Report</h1>
-    <div class="metadata">
-      <div class="label">Task:</div><div>{escape(metadata.get("task_name", ""))}</div>
-      <div class="label">Company:</div><div>{escape(metadata.get("client_name", ""))}</div>
-      <div class="label">Site / Location:</div><div>{escape(metadata.get("site_location", ""))}</div>
-      <div class="label">Assessment Date:</div><div>{escape(metadata.get("assessment_date", ""))}</div>
-      <div class="label">Assessment Method:</div><div>{escape(metadata.get("assessment_method", ""))}</div>
-      <div class="label">Video Duration:</div><div>{escape(metadata.get("video_duration", ""))}</div>
-      <div class="label">Assessor:</div><div>{escape(metadata.get("assessor", ""))}</div>
+  <header class="topbar">
+    <div class="brand">
+      {logo_html}
     </div>
-  </div>
+    <div class="report-label">
+      Movement Analysis<br>
+      Risk Report
+    </div>
+  </header>
+
+  <section class="cover">
+    <div class="metadata">
+      <div class="label">Task:</div><div>{escape(metadata.get("task_name", "Not specified"))}</div>
+      <div class="label">Company:</div><div>{escape(metadata.get("client_name", "Not specified"))}</div>
+      <div class="label">Site / Location:</div><div>{escape(metadata.get("site_location", "Not specified"))}</div>
+      <div class="label">Assessment Date:</div><div>{escape(metadata.get("assessment_date", "Not specified"))}</div>
+      <div class="label">Assessment Method:</div><div>{escape(metadata.get("assessment_method", "Not specified"))}</div>
+      <div class="label">Video Duration:</div><div>{escape(metadata.get("video_duration", "Not specified"))}</div>
+      <div class="label">Assessor:</div><div>{escape(metadata.get("assessor", "Not specified"))}</div>
+    </div>
+  </section>
 
   {_section("Section 1 – Assessment Overview", assessment_overview)}
   {_section("Section 2 – Summary of Assessment Results", summary_body)}
@@ -438,10 +558,10 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
   {_section("Section 4 – Overall Observations", observations_body)}
   {_section("Section 5 – Overall Recommendations", recommendations_body)}
   {_section("Section 6 – Targeted Vergo Training Videos", training_body)}
-  {_section("Section 7 – Disclaimer", _p(DISCLAIMER_TEXT))}
+  {_section("Section 7 – Disclaimer", _p(DISCLAIMER_TEXT), css_class="disclaimer-section")}
 
   <div class="footer-note">
-    {escape(metadata.get("client_name", ""))} – {escape(metadata.get("task_name", ""))} | {escape(metadata.get("assessment_date", ""))}
+    {escape(metadata.get("client_name", "Not specified"))} – {escape(metadata.get("task_name", "Not specified"))} | {escape(metadata.get("assessment_date", "Not specified"))}
   </div>
 </body>
 </html>
