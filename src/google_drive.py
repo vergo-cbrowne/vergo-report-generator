@@ -113,24 +113,75 @@ def download_json_file(service, file_id: str) -> Any:
 
 
 def upload_file(service, folder_id: str, name: str, content: bytes, mime_type: str) -> Dict[str, Any]:
-    file_metadata = {"name": name, "parents": [folder_id]}
+    """
+    Upload a file to Google Drive.
+
+    If a file with the same name already exists in the target folder, update the
+    most recently modified matching file instead of creating duplicates.
+    """
     media = MediaIoBaseUpload(io.BytesIO(content), mimetype=mime_type, resumable=True)
-    file_obj = service.files().create(
+
+    query = (
+        f"'{folder_id}' in parents and "
+        f"name = '{name}' and "
+        "trashed = false"
+    )
+
+    existing = service.files().list(
+        q=query,
+        fields="files(id, name, modifiedTime)",
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
+    ).execute().get("files", [])
+
+    if existing:
+        existing.sort(key=lambda f: f.get("modifiedTime", ""), reverse=True)
+        file_id = existing[0]["id"]
+
+        print(f"Updating existing Google Drive file: {name} ({file_id})")
+
+        updated_file = service.files().update(
+            fileId=file_id,
+            media_body=media,
+            fields="id, name, webViewLink, webContentLink",
+            supportsAllDrives=True,
+        ).execute()
+
+        return updated_file
+
+    print(f"Creating new Google Drive file: {name}")
+
+    file_metadata = {
+        "name": name,
+        "parents": [folder_id],
+    }
+
+    uploaded_file = service.files().create(
         body=file_metadata,
         media_body=media,
-        fields="id,name",
+        fields="id, name, webViewLink, webContentLink",
         supportsAllDrives=True,
     ).execute()
-    return file_obj
+
+    return uploaded_file
+
 
 
 def update_file_content(service, file_id: str, content: bytes, mime_type: str) -> Dict[str, Any]:
+    """
+    Update the contents of an existing Google Drive file.
+    Used for status.json and any other file that should be updated in place.
+    """
     media = MediaIoBaseUpload(io.BytesIO(content), mimetype=mime_type, resumable=True)
-    return service.files().update(
+
+    updated_file = service.files().update(
         fileId=file_id,
         media_body=media,
+        fields="id, name, webViewLink, webContentLink",
         supportsAllDrives=True,
     ).execute()
+
+    return updated_file
 
 
 def create_or_update_json_file(service, folder_id: str, name: str, data: Any) -> Dict[str, Any]:
