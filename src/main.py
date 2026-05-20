@@ -1,4 +1,6 @@
+from googleapiclient.http import MediaIoBaseDownload
 import argparse
+import io
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +12,7 @@ import assessment_loader
 import report_generator
 import html_report_builder
 import pdf_builder
+import re
 
 
 def parse_args():
@@ -127,6 +130,382 @@ def _load_raw_parsed_response_if_better(generated_report: dict) -> dict:
     return generated_report
 
 
+BAD_METADATA_VALUES = {
+    "",
+    "unknown",
+    "none",
+    "n/a",
+    "na",
+    "not applicable",
+    "not specified",
+    "confidential",
+    "[put client/company name here]",
+    "[put facility/location here]",
+    "[put date here if known]",
+    "[briefly describe where the task happens. example: production floor, warehouse, healthcare setting, manufacturing station, construction area, etc.]",
+    "[add any useful context for the report. example: repetitive handling, reaching, wrist movement, lifting, bending, standing work, overhead work, tool use, awkward posture, etc.]",
+}
+
+
+def _clean_metadata_value(value: str | None) -> str:
+    if value is None:
+        return ""
+
+    cleaned = str(value).strip()
+
+    # Remove common markdown / doc formatting leftovers.
+    cleaned = cleaned.strip("*").strip()
+
+    if not cleaned:
+        return ""
+
+    if cleaned.lower() in BAD_METADATA_VALUES:
+        return ""
+
+    # Ignore generic square-bracket placeholders.
+    if cleaned.startswith("[") and cleaned.endswith("]"):
+        return ""
+
+    return cleaned
+
+
+def _load_task_context_text(service, assessment_folder_id: str) -> str:
+    """
+    Load task_context.txt from the assessment folder.
+
+    Supports both:
+    - Google Docs named task_context.txt
+    - uploaded plain text files named task_context.txt
+    """
+    try:
+        results = service.files().list(
+            q=f"'{assessment_folder_id}' in parents and trashed = false",
+            fields="files(id, name, mimeType, modifiedTime)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+        ).execute()
+
+        files = results.get("files", [])
+        matches = [
+            f for f in files
+            if f.get("name", "").strip().lower() == "task_context.txt"
+        ]
+
+        if not matches:
+            print("Metadata: No task_context.txt found in assessment folder.")
+            return ""
+
+        matches.sort(key=lambda f: f.get("modifiedTime", ""), reverse=True)
+        task_context_file = matches[0]
+
+        file_id = task_context_file["id"]
+        file_name = task_context_file.get("name", "")
+        mime_type = task_context_file.get("mimeType", "")
+
+        print(f"Metadata: Found task_context.txt: {file_name} ({mime_type})")
+
+        if mime_type == "application/vnd.google-apps.document":
+            request = service.files().export_media(
+                fileId=file_id,
+                mimeType="text/plain",
+            )
+        else:
+            request = service.files().get_media(
+                fileId=file_id,
+                supportsAllDrives=True,
+            )
+
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+
+        loaded_text = fh.getvalue().decode("utf-8", errors="replace").strip()
+
+        if not loaded_text:
+            print("Metadata: task_context.txt was found but is empty.")
+            return ""
+
+        print("Metadata: Loaded task_context.txt successfully.")
+        return loaded_text
+
+    except Exception as exc:
+        print(f"Metadata: Could not load task_context.txt: {exc}")
+        return ""
+
+
+def _extract_label_value(text: str, labels: list[str]) -> str:
+    for label in labels:
+        pattern = rf"^\s*{re.escape(label)}\s*:\s*(.+?)\s*$"
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
+        if match:
+            value = _clean_metadata_value(match.group(1))
+            if value:
+                return value
+    return ""
+
+
+def _extract_task_context_metadata(text: str) -> dict:
+    if not text:
+        return {}
+
+    company = _extract_label_value(text, ["Client", "Company", "Company/Client name"])
+    site = _extract_label_value(text, ["Site", "Site / Location", "Location", "Facility", "Site location or facility name"])
+    assessment_date = _extract_label_value(text, ["Assessment Date", "Date"])
+    assessor = _extract_label_value(text, ["Assessor", "Assessor Name"])
+    assessment_method = _extract_label_value(text, ["Assessment Method", "Method"])
+
+    metadata = {}
+
+    if company:
+        metadata["Company/Client name"] = company
+        metadata["company"] = company
+        metadata["client"] = company
+
+    if site:
+        metadata["Site location or facility name"] = site
+        metadata["site_location"] = site
+        metadata["site"] = site
+
+    if assessment_date:
+        metadata["Assessment date"] = assessment_date
+        metadata["assessment_date"] = assessment_date
+
+    if assessor:
+        metadata["Assessor name"] = assessor
+        metadata["assessor"] = assessor
+
+    if assessment_method:
+        metadata["Assessment method"] = assessment_method
+        metadata["assessment_method"] = assessment_method
+
+    return metadata
+
+
+
+def _find_first_metadata_value(data, possible_keys: list[str]) -> str:
+    """
+    Search report.json recursively for likely metadata fields.
+    """
+    possible = {k.lower().replace(" ", "_").replace("/", "_") for k in possible_keys}
+
+    def normalize_key(key):
+        return str(key).lower().strip().replace(" ", "_").replace("/", "_")
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if normalize_key(key) in possible:
+                    cleaned = _clean_metadata_value(item)
+                    if cleaned:
+                        return cleaned
+
+            for item in value.values():
+                found = walk(item)
+                if found:
+                    return found
+
+        elif isinstance(value, list):
+            for item in value:
+                found = walk(item)
+                if found:
+                    return found
+
+        return ""
+
+    return walk(data)
+
+
+def _extract_report_json_metadata_auto(report_data: dict) -> dict:
+    """
+    Pull metadata from report.json when available.
+    """
+    if not isinstance(report_data, dict):
+        return {}
+
+    company = _find_first_metadata_value(
+        report_data,
+        [
+            "client",
+            "client_name",
+            "company",
+            "company_name",
+            "customer",
+            "customer_name",
+            "organization",
+            "organization_name",
+            "employer",
+        ],
+    )
+
+    site = _find_first_metadata_value(
+        report_data,
+        [
+            "site",
+            "site_name",
+            "site_location",
+            "location",
+            "facility",
+            "facility_name",
+            "worksite",
+            "work_area",
+        ],
+    )
+
+    task = _find_first_metadata_value(
+        report_data,
+        [
+            "task",
+            "task_name",
+            "task_title",
+            "activity",
+            "activity_name",
+            "assessment_name",
+            "video_name",
+            "file_name",
+            "filename",
+        ],
+    )
+
+    assessment_date = _find_first_metadata_value(
+        report_data,
+        [
+            "assessment_date",
+            "date",
+            "created_date",
+            "analysis_date",
+            "recorded_date",
+        ],
+    )
+
+    metadata = {}
+
+    if company:
+        metadata["Company/Client name"] = company
+        metadata["company"] = company
+        metadata["client"] = company
+
+    if site:
+        metadata["Site location or facility name"] = site
+        metadata["site_location"] = site
+        metadata["site"] = site
+
+    if task:
+        metadata["Task name/title"] = task
+        metadata["task_name"] = task
+        metadata["task"] = task
+
+    if assessment_date:
+        metadata["Assessment date"] = assessment_date
+        metadata["assessment_date"] = assessment_date
+
+    if metadata:
+        print(f"Metadata: Extracted from report.json fields: {metadata}")
+
+    return metadata
+
+
+def _get_drive_folder_metadata(service, assessment_folder_id: str) -> dict:
+    """
+    Use Google Drive folder names as fallback metadata.
+
+    Intended structure:
+    Client folder
+      └── Assessment folder
+
+    Parent folder = company/client fallback.
+    Assessment folder = site/location fallback.
+    """
+    try:
+        folder = service.files().get(
+            fileId=assessment_folder_id,
+            fields="id,name,parents,mimeType",
+            supportsAllDrives=True,
+        ).execute()
+
+        assessment_folder_name = _clean_metadata_value(folder.get("name", ""))
+        parents = folder.get("parents", []) or []
+
+        parent_folder_name = ""
+        if parents:
+            parent = service.files().get(
+                fileId=parents[0],
+                fields="id,name,mimeType",
+                supportsAllDrives=True,
+            ).execute()
+            parent_folder_name = _clean_metadata_value(parent.get("name", ""))
+
+        metadata = {}
+
+        if parent_folder_name:
+            metadata["Company/Client name"] = parent_folder_name
+            metadata["company"] = parent_folder_name
+            metadata["client"] = parent_folder_name
+
+        if assessment_folder_name:
+            metadata["Site location or facility name"] = assessment_folder_name
+            metadata["site_location"] = assessment_folder_name
+            metadata["site"] = assessment_folder_name
+
+        if metadata:
+            print(f"Metadata: Extracted from Drive folder structure: {metadata}")
+
+        return metadata
+
+    except Exception as exc:
+        print(f"Metadata: Could not extract Drive folder metadata: {exc}")
+        return {}
+
+
+def _merge_auto_metadata(folder_metadata: dict, report_json_metadata: dict, task_context_metadata: dict) -> dict:
+    """
+    Priority:
+    1. Folder metadata provides fallback client/site.
+    2. report.json overrides folder metadata when it has client/site/task/date.
+    3. task_context.txt only overrides date, assessor, and method.
+
+    task_context.txt should not override company, client, site, or task name because those
+    should come from report.json or the Google Drive folder/file structure.
+    """
+    merged = {}
+    merged.update(folder_metadata or {})
+    merged.update(report_json_metadata or {})
+
+    allowed_task_context_keys = {
+        "Assessment date",
+        "assessment_date",
+        "Assessor name",
+        "assessor",
+        "Assessment method",
+        "assessment_method",
+    }
+
+    for key, value in (task_context_metadata or {}).items():
+        if key in allowed_task_context_keys:
+            merged[key] = value
+
+    return merged
+
+
+def _apply_task_context_metadata(report: dict, metadata: dict) -> dict:
+    if not metadata:
+        print("Metadata: No usable metadata extracted from task_context.txt.")
+        return report
+
+    print(f"Metadata: Applying task_context.txt metadata overrides: {metadata}")
+
+    cover_details = report.get("cover_details")
+    if not isinstance(cover_details, dict):
+        cover_details = {}
+
+    cover_details.update(metadata)
+    report["cover_details"] = cover_details
+
+    return report
+
+
 def main():
     args = parse_args()
 
@@ -155,6 +534,27 @@ def main():
     )
 
     report_for_rendering = _load_raw_parsed_response_if_better(generated_report)
+
+    print("Loading task_context.txt metadata if available...")
+    task_context_text = _load_task_context_text(service, args.assessment_folder_id)
+    task_context_metadata = _extract_task_context_metadata(task_context_text)
+    report_json_metadata = _extract_report_json_metadata_auto(report_data)
+    folder_metadata = _get_drive_folder_metadata(service, args.assessment_folder_id)
+    combined_metadata = _merge_auto_metadata(folder_metadata, report_json_metadata, task_context_metadata)
+
+    # Vergo processed folder names often contain the client name, e.g.
+    # Cameco_Vergo_3 - b5ee8 -> Cameco.
+    # This prevents account/user folders like "Kenil Patel" from being used as the company.
+    site_name = combined_metadata.get("Site location or facility name") or combined_metadata.get("site_location") or ""
+    if "_Vergo" in site_name:
+        inferred_company = site_name.split("_Vergo", 1)[0].replace("_", " ").strip()
+        if inferred_company:
+            combined_metadata["Company/Client name"] = inferred_company
+            combined_metadata["company"] = inferred_company
+            combined_metadata["client"] = inferred_company
+            print(f"Metadata: Inferred company from processed folder name: {inferred_company}")
+
+    report_for_rendering = _apply_task_context_metadata(report_for_rendering, combined_metadata)
 
     output_dir = Path("output")
     output_dir.mkdir(parents=True, exist_ok=True)
