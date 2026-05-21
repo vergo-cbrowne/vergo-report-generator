@@ -1,4 +1,6 @@
 import base64
+import hmac
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -282,6 +284,75 @@ def apply_vergo_theme():
     )
 
 
+
+def load_local_env_file():
+    """
+    Lightweight .env loader so the admin portal can read local credentials
+    without requiring another dependency.
+    """
+    env_path = Path(".env")
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
+
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+
+        os.environ.setdefault(key, value)
+
+
+def require_admin_login():
+    admin_user = os.environ.get("VERGO_ADMIN_USER", "")
+    admin_password = os.environ.get("VERGO_ADMIN_PASSWORD", "")
+
+    if not admin_user or not admin_password:
+        st.error("Admin login is not configured. Set VERGO_ADMIN_USER and VERGO_ADMIN_PASSWORD in .env.")
+        st.stop()
+
+    if st.session_state.get("vergo_admin_authenticated") is True:
+        with st.sidebar:
+            st.caption(f"Signed in as **{admin_user}**")
+            if st.button("Sign out", use_container_width=True):
+                st.session_state["vergo_admin_authenticated"] = False
+                st.rerun()
+        return
+
+    st.markdown(
+        """
+        <div class="hero-card">
+            <div class="hero-kicker">Secure Access</div>
+            <h1 class="hero-title">Vergo Admin Login</h1>
+            <div class="hero-subtitle">
+                Sign in to access the report operations dashboard.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.form("vergo_admin_login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Sign in", use_container_width=True)
+
+    if submitted:
+        user_ok = hmac.compare_digest(username, admin_user)
+        password_ok = hmac.compare_digest(password, admin_password)
+
+        if user_ok and password_ok:
+            st.session_state["vergo_admin_authenticated"] = True
+            st.rerun()
+
+        st.error("Invalid username or password.")
+
+    st.stop()
+
 def load_scan_csv(path: str) -> pd.DataFrame:
     csv_path = Path(path)
     if not csv_path.exists():
@@ -414,7 +485,9 @@ def format_date(value) -> str:
     return text or "—"
 
 
+load_local_env_file()
 apply_vergo_theme()
+require_admin_login()
 
 st.markdown(
     """
