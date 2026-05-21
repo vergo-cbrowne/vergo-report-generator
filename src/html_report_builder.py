@@ -755,12 +755,7 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
 
   {_section("Section 1 – Assessment Overview", assessment_overview)}
   {_section("Section 2 – Summary of Assessment Results", summary_body)}
-  {_section("
-Safety Manager Interpretation
-
-REBA and RULA scores should be used as ergonomic screening indicators, not as a standalone determination that a task is safe or unsafe. The score reflects the postures visible in the video sample and should be interpreted alongside task frequency, duration, force or load, repetition, recovery time, work pace, environmental conditions, worker variability, and whether the video reflects typical work. The purpose of this report is to support prevention by identifying practical opportunities to reduce cumulative strain. A score does not mean that injury is expected or inevitable.
-
-Section 3 – Task-Based Risk Exposure Analysis", risk_body)}
+  {_section("Section 3 – Task-Based Risk Exposure Analysis", risk_body)}
   {_section("Section 4 – Overall Observations", observations_body)}
   {_section("Section 5 – Overall Recommendations", recommendations_body)}
   {_section("Section 6 – Targeted Vergo Training Videos", training_body)}
