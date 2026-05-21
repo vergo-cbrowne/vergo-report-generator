@@ -1,5 +1,4 @@
 import base64
-import csv
 import subprocess
 import sys
 from pathlib import Path
@@ -14,10 +13,17 @@ DEFAULT_ROOT_FOLDER_ID = "1zRTHGXHKpNDB2yqubgfXKqd2r6qO-92_"
 DEFAULT_CREDENTIALS_PATH = "credentials/service-account.json"
 DEFAULT_PROMPT_PATH = "prompts/vergo_master_report_prompt.md"
 DEFAULT_MODEL = "gpt-4.1"
+
 SCAN_CSV = "output/drive_scan.csv"
 BATCH_SUMMARY_CSV = "output/portal_batch_summary.csv"
-
 LOGO_PATH = "assets/vergo-logo-white-transparent.png"
+
+
+st.set_page_config(
+    page_title="Vergo Report Admin",
+    page_icon="✅",
+    layout="wide",
+)
 
 
 def image_to_base64(path: str) -> str:
@@ -30,11 +36,12 @@ def image_to_base64(path: str) -> str:
 def apply_vergo_theme():
     logo_b64 = image_to_base64(LOGO_PATH)
 
-    logo_html = ""
+    sidebar_logo = ""
     if logo_b64:
-        logo_html = f"""
-        <div class="vergo-brand">
-            <img src="data:image/png;base64,{logo_b64}" class="vergo-logo" />
+        sidebar_logo = f"""
+        <div class="sidebar-brand">
+            <img src="data:image/png;base64,{logo_b64}" class="sidebar-logo" />
+            <div class="sidebar-subtitle">Report Operations</div>
         </div>
         """
 
@@ -43,12 +50,13 @@ def apply_vergo_theme():
         <style>
         :root {{
             --bg: #050914;
-            --panel: rgba(16, 24, 39, 0.76);
-            --panel-strong: rgba(23, 34, 55, 0.92);
+            --panel: rgba(15, 23, 42, 0.78);
+            --panel-strong: rgba(17, 24, 39, 0.94);
             --line: rgba(148, 163, 184, 0.18);
             --text: #f8fafc;
             --muted: #94a3b8;
-            --green: #79d14f;
+            --green: #77d653;
+            --green-dark: #16a34a;
             --cyan: #38bdf8;
             --blue: #2563eb;
             --warning: #facc15;
@@ -57,57 +65,74 @@ def apply_vergo_theme():
 
         .stApp {{
             background:
-                radial-gradient(circle at 18% 10%, rgba(56, 189, 248, 0.16), transparent 30%),
-                radial-gradient(circle at 82% 20%, rgba(121, 209, 79, 0.10), transparent 28%),
+                radial-gradient(circle at 18% 6%, rgba(56, 189, 248, 0.18), transparent 30%),
+                radial-gradient(circle at 82% 18%, rgba(121, 209, 79, 0.12), transparent 28%),
                 linear-gradient(135deg, #030712 0%, #07111f 45%, #020617 100%);
             color: var(--text);
         }}
 
         section[data-testid="stSidebar"] {{
-            background: rgba(8, 13, 25, 0.92);
+            background: rgba(5, 10, 22, 0.96);
             border-right: 1px solid var(--line);
-            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.32);
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.35);
         }}
 
         section[data-testid="stSidebar"] > div {{
             padding-top: 1.2rem;
         }}
 
-        .vergo-brand {{
-            padding: 0.8rem 0 1.3rem 0;
-            display: flex;
-            align-items: center;
+        .sidebar-brand {{
+            padding: 0.2rem 0 1.4rem 0;
+            margin-bottom: 0.8rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.16);
         }}
 
-        .vergo-logo {{
-            width: 172px;
-            max-width: 92%;
-            filter: drop-shadow(0 0 18px rgba(121, 209, 79, 0.22));
+        .sidebar-logo {{
+            width: 165px;
+            max-width: 94%;
+            filter: drop-shadow(0 0 18px rgba(121, 209, 79, 0.24));
+        }}
+
+        .sidebar-subtitle {{
+            margin-top: 0.35rem;
+            color: var(--muted);
+            font-size: 0.74rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
         }}
 
         .hero-card {{
-            padding: 1.45rem 1.6rem;
+            padding: 1.55rem 1.7rem;
             border: 1px solid rgba(148, 163, 184, 0.18);
             background:
                 linear-gradient(135deg, rgba(30, 41, 59, 0.84), rgba(15, 23, 42, 0.60)),
-                radial-gradient(circle at 90% 10%, rgba(56, 189, 248, 0.18), transparent 34%);
+                radial-gradient(circle at 94% 12%, rgba(56, 189, 248, 0.18), transparent 34%);
             border-radius: 24px;
             box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
-            margin-bottom: 1.3rem;
+            margin-bottom: 1.25rem;
+        }}
+
+        .hero-kicker {{
+            color: var(--green);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            margin-bottom: 0.55rem;
         }}
 
         .hero-title {{
-            font-size: 2.1rem;
+            font-size: 2.15rem;
             line-height: 1.05;
             margin: 0;
-            font-weight: 800;
-            letter-spacing: -0.03em;
+            font-weight: 850;
+            letter-spacing: -0.035em;
         }}
 
         .hero-subtitle {{
             color: var(--muted);
-            margin-top: 0.6rem;
-            max-width: 760px;
+            margin-top: 0.72rem;
+            max-width: 850px;
             font-size: 0.98rem;
         }}
 
@@ -115,7 +140,7 @@ def apply_vergo_theme():
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 0.9rem;
-            margin: 1rem 0 1.2rem 0;
+            margin: 1rem 0 1.25rem 0;
         }}
 
         .metric-card {{
@@ -128,15 +153,15 @@ def apply_vergo_theme():
 
         .metric-label {{
             color: var(--muted);
-            font-size: 0.78rem;
+            font-size: 0.74rem;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.09em;
             margin-bottom: 0.45rem;
         }}
 
         .metric-value {{
-            font-size: 1.65rem;
-            font-weight: 800;
+            font-size: 1.7rem;
+            font-weight: 850;
             color: var(--text);
         }}
 
@@ -144,26 +169,71 @@ def apply_vergo_theme():
             color: var(--green);
         }}
 
-        div[data-testid="stSelectbox"] > div,
-        div[data-testid="stTextInput"] > div,
-        div[data-testid="stCheckbox"] {{
-            border-radius: 14px;
+        .action-bar {{
+            display: flex;
+            gap: 0.85rem;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            margin: 1rem 0 1.1rem 0;
+            background: rgba(15, 23, 42, 0.62);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 20px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
         }}
 
-        .stButton > button {{
-            border-radius: 16px !important;
-            border: 1px solid rgba(121, 209, 79, 0.26) !important;
-            background: linear-gradient(135deg, #69c94a 0%, #16a34a 45%, #0f766e 100%) !important;
-            color: white !important;
-            font-weight: 750 !important;
-            box-shadow: 0 14px 35px rgba(34, 197, 94, 0.22) !important;
-            min-height: 3rem;
+        .action-copy {{
+            color: var(--muted);
+            font-size: 0.92rem;
         }}
 
-        .stButton > button:hover {{
-            transform: translateY(-1px);
-            border-color: rgba(56, 189, 248, 0.55) !important;
-            box-shadow: 0 18px 44px rgba(56, 189, 248, 0.20) !important;
+        .link-table {{
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            overflow: hidden;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            box-shadow: 0 18px 55px rgba(0,0,0,0.22);
+            margin-bottom: 1.15rem;
+        }}
+
+        .link-table th {{
+            background: rgba(15, 23, 42, 0.96);
+            color: #e5e7eb;
+            padding: 0.85rem 0.8rem;
+            font-size: 0.78rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+        }}
+
+        .link-table td {{
+            background: rgba(9, 14, 27, 0.76);
+            padding: 0.78rem 0.8rem;
+            font-size: 0.83rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.10);
+            vertical-align: middle;
+        }}
+
+        .status-chip {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.28rem 0.62rem;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 800;
+            border: 1px solid rgba(255,255,255,0.10);
+            white-space: nowrap;
+        }}
+
+        .chip-ready {{ background: rgba(56, 189, 248, 0.16); color: #7dd3fc; }}
+        .chip-completed {{ background: rgba(34, 197, 94, 0.16); color: #86efac; }}
+        .chip-review {{ background: rgba(250, 204, 21, 0.16); color: #fde68a; }}
+        .chip-failed {{ background: rgba(251, 113, 133, 0.16); color: #fda4af; }}
+
+        .muted {{
+            color: var(--muted);
         }}
 
         div[data-testid="stDataFrame"],
@@ -174,35 +244,31 @@ def apply_vergo_theme():
             box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
         }}
 
-        .status-chip {{
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.28rem 0.6rem;
-            border-radius: 999px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            border: 1px solid rgba(255,255,255,0.10);
+        .stButton > button {{
+            border-radius: 16px !important;
+            border: 1px solid rgba(121, 209, 79, 0.26) !important;
+            background: linear-gradient(135deg, #69c94a 0%, #16a34a 45%, #0f766e 100%) !important;
+            color: white !important;
+            font-weight: 780 !important;
+            box-shadow: 0 14px 35px rgba(34, 197, 94, 0.22) !important;
+            min-height: 3rem;
         }}
 
-        .chip-ready {{ background: rgba(56, 189, 248, 0.16); color: #7dd3fc; }}
-        .chip-completed {{ background: rgba(34, 197, 94, 0.16); color: #86efac; }}
-        .chip-review {{ background: rgba(250, 204, 21, 0.16); color: #fde68a; }}
-        .chip-failed {{ background: rgba(251, 113, 133, 0.16); color: #fda4af; }}
+        .stButton > button:hover {{
+            transform: translateY(-1px);
+            border-color: rgba(56, 189, 248, 0.55) !important;
+            box-shadow: 0 18px 44px rgba(56, 189, 248, 0.20) !important;
+        }}
 
         a {{
             color: #7dd3fc !important;
             text-decoration: none;
-            font-weight: 700;
+            font-weight: 800;
         }}
 
         a:hover {{
             color: #bbf7d0 !important;
             text-decoration: underline;
-        }}
-
-        hr {{
-            border-color: rgba(148, 163, 184, 0.16);
         }}
 
         @media (max-width: 1100px) {{
@@ -211,40 +277,16 @@ def apply_vergo_theme():
             }}
         }}
         </style>
-        {logo_html}
+        {sidebar_logo}
         """,
         unsafe_allow_html=True,
     )
 
 
-st.set_page_config(
-    page_title="Vergo Report Admin",
-    page_icon="✅",
-    layout="wide",
-)
-
-apply_vergo_theme()
-
-st.markdown(
-    """
-    <div class="hero-card">
-        <h1 class="hero-title">Vergo Report Admin Portal</h1>
-        <div class="hero-subtitle">
-            Scan Google Drive, review processed assessment folders, generate branded ergonomic PDF reports,
-            and track batch results from one operations dashboard.
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
 def load_scan_csv(path: str) -> pd.DataFrame:
     csv_path = Path(path)
-
     if not csv_path.exists():
         return pd.DataFrame()
-
     return pd.read_csv(csv_path).fillna("")
 
 
@@ -262,7 +304,6 @@ def run_drive_scan(credentials_path: str, root_folder_id: str, full_scan: bool) 
     )
 
     drive_scanner.write_csv(rows, SCAN_CSV)
-
     return load_scan_csv(SCAN_CSV)
 
 
@@ -304,7 +345,7 @@ def run_batch(folder_ids: list[str], credentials_path: str, prompt_path: str, mo
 
 def make_link(url: str, label: str) -> str:
     if not isinstance(url, str) or not url.strip():
-        return ""
+        return '<span class="muted">—</span>'
     return f'<a href="{url}" target="_blank">{label}</a>'
 
 
@@ -315,15 +356,34 @@ def build_status_badge(row) -> str:
     has_snapshots = str(row.get("has_snapshots", "")).lower() == "true"
 
     if not has_json or not has_snapshots:
-        return "⚫ Invalid"
+        return "Failed"
 
     if has_pdf and status == "completed":
-        return "🟢 Completed"
+        return "Completed"
 
     if has_pdf and status != "completed":
-        return "🟡 Needs Review"
+        return "Needs Review"
 
-    return "🔵 Ready"
+    return "Ready"
+
+
+def chip_html(status: str) -> str:
+    status = status or "Ready"
+    css = {
+        "Ready": "chip-ready",
+        "Completed": "chip-completed",
+        "Needs Review": "chip-review",
+        "Failed": "chip-failed",
+    }.get(status, "chip-ready")
+
+    icon = {
+        "Ready": "●",
+        "Completed": "●",
+        "Needs Review": "●",
+        "Failed": "●",
+    }.get(status, "●")
+
+    return f'<span class="status-chip {css}">{icon} {status}</span>'
 
 
 def clean_batch_summary(summary_df: pd.DataFrame, assessment_date_required: bool) -> pd.DataFrame:
@@ -342,6 +402,34 @@ def clean_batch_summary(summary_df: pd.DataFrame, assessment_date_required: bool
         )
 
     return df
+
+
+def format_bool(value) -> str:
+    return "Yes" if str(value).lower() == "true" else "No"
+
+
+def format_date(value) -> str:
+    text = str(value or "")
+    if "T" in text:
+        return text.split("T", 1)[0]
+    return text or "—"
+
+
+apply_vergo_theme()
+
+st.markdown(
+    """
+    <div class="hero-card">
+        <div class="hero-kicker">Vergo Operations</div>
+        <h1 class="hero-title">Report Admin Portal</h1>
+        <div class="hero-subtitle">
+            Scan Google Drive, review processed assessment folders, generate branded ergonomic PDF reports,
+            and track batch results from one operations dashboard.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 with st.sidebar:
@@ -410,8 +498,8 @@ if valid_df.empty:
 
 
 valid_df["status_badge"] = valid_df.apply(build_status_badge, axis=1)
-valid_df["folder"] = valid_df.apply(lambda row: make_link(row.get("folder_link", ""), "Folder"), axis=1)
-valid_df["pdf"] = valid_df.apply(lambda row: make_link(row.get("pdf_link", ""), "PDF"), axis=1)
+valid_df["Folder Link"] = valid_df.apply(lambda row: make_link(row.get("folder_link", ""), "Open Folder"), axis=1)
+valid_df["PDF Link"] = valid_df.apply(lambda row: make_link(row.get("pdf_link", ""), "Open PDF"), axis=1)
 
 
 col1, col2, col3, col4 = st.columns(4)
@@ -446,11 +534,11 @@ if account_filter != "All":
     filtered = filtered[filtered["account"] == account_filter]
 
 if status_filter == "Ready":
-    filtered = filtered[filtered["status_badge"] == "🔵 Ready"]
+    filtered = filtered[filtered["status_badge"] == "Ready"]
 elif status_filter == "Completed":
-    filtered = filtered[filtered["status_badge"] == "🟢 Completed"]
+    filtered = filtered[filtered["status_badge"] == "Completed"]
 elif status_filter == "Needs Review":
-    filtered = filtered[filtered["status_badge"] == "🟡 Needs Review"]
+    filtered = filtered[filtered["status_badge"] == "Needs Review"]
 elif status_filter == "Missing PDF":
     filtered = filtered[filtered["has_pdf"].astype(str) != "True"]
 
@@ -460,28 +548,28 @@ if search.strip():
     ]
 
 
-completed_count = len(filtered[filtered["status_badge"] == "🟢 Completed"])
-ready_count = len(filtered[filtered["status_badge"] == "🔵 Ready"])
-review_count = len(filtered[filtered["status_badge"] == "🟡 Needs Review"])
+completed_count = len(filtered[filtered["status_badge"] == "Completed"])
+ready_count = len(filtered[filtered["status_badge"] == "Ready"])
+review_count = len(filtered[filtered["status_badge"] == "Needs Review"])
 missing_pdf_count = len(filtered[filtered["has_pdf"].astype(str) != "True"])
 
 st.markdown(
     f"""
     <div class="metric-grid">
         <div class="metric-card">
-            <div class="metric-label">Visible folders</div>
+            <div class="metric-label">Visible Folders</div>
             <div class="metric-value">{len(filtered)}</div>
         </div>
         <div class="metric-card">
-            <div class="metric-label">Ready</div>
+            <div class="metric-label">Ready to Generate</div>
             <div class="metric-value metric-accent">{ready_count}</div>
         </div>
         <div class="metric-card">
-            <div class="metric-label">Completed</div>
+            <div class="metric-label">Completed Reports</div>
             <div class="metric-value">{completed_count}</div>
         </div>
         <div class="metric-card">
-            <div class="metric-label">Missing PDF</div>
+            <div class="metric-label">Missing PDFs</div>
             <div class="metric-value">{missing_pdf_count}</div>
         </div>
     </div>
@@ -489,66 +577,87 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-display_columns = [
+
+missing_pdf_rows = filtered[filtered["has_pdf"].astype(str) != "True"]
+missing_pdf_folder_ids = missing_pdf_rows["folder_id"].tolist()
+
+table_rows = []
+for _, row in filtered.iterrows():
+    table_rows.append(
+        {
+            "Company": row.get("company", ""),
+            "Account": row.get("account", ""),
+            "Assessment Folder": row.get("assessment_folder", ""),
+            "Status": chip_html(row.get("status_badge", "")),
+            "PDF": format_bool(row.get("has_pdf", "")),
+            "Drive Folder": row.get("Folder Link", ""),
+            "Report PDF": row.get("PDF Link", ""),
+            "Last Modified": format_date(row.get("modified_time", "")),
+        }
+    )
+
+preview_df = pd.DataFrame(table_rows)
+
+st.markdown(
+    preview_df.to_html(escape=False, index=False, classes="link-table"),
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="action-bar">
+        <div>
+            <strong>Report generation</strong><br>
+            <span class="action-copy">Select specific folders below, or generate all visible folders that are missing PDFs.</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+select_columns = [
     "company",
     "account",
     "assessment_folder",
     "status_badge",
     "has_pdf",
     "status",
-    "folder",
-    "pdf",
-    "has_report_json",
-    "has_snapshots",
-    "has_video",
     "modified_time",
     "folder_id",
 ]
 
-link_display = filtered[
-    [
-        "company",
-        "account",
-        "assessment_folder",
-        "status_badge",
-        "has_pdf",
-        "status",
-        "folder",
-        "pdf",
-        "modified_time",
-    ]
-].copy()
-
-st.markdown(
-    link_display.to_html(escape=False, index=False),
-    unsafe_allow_html=True,
+filtered_display = filtered[select_columns].copy()
+filtered_display = filtered_display.rename(
+    columns={
+        "company": "Company",
+        "account": "Account",
+        "assessment_folder": "Assessment Folder",
+        "status_badge": "Status",
+        "has_pdf": "Has PDF",
+        "status": "Drive Status",
+        "modified_time": "Last Modified",
+        "folder_id": "Folder ID",
+    }
 )
 
-st.caption("Use the selectable table below to choose folders for generation.")
-
-filtered_display = filtered[display_columns].copy()
-filtered_display.insert(0, "select", False)
+filtered_display.insert(0, "Select", False)
 
 edited = st.data_editor(
     filtered_display,
     use_container_width=True,
     hide_index=True,
     column_config={
-        "select": st.column_config.CheckboxColumn("Select"),
-        "folder_id": st.column_config.TextColumn("Folder ID", disabled=True),
+        "Select": st.column_config.CheckboxColumn("Select"),
+        "Folder ID": st.column_config.TextColumn("Folder ID", disabled=True),
     },
-    disabled=[col for col in filtered_display.columns if col != "select"],
+    disabled=[col for col in filtered_display.columns if col != "Select"],
 )
 
-selected_rows = edited[edited["select"] == True]
-selected_folder_ids = selected_rows["folder_id"].tolist()
-
-missing_pdf_rows = filtered[filtered["has_pdf"].astype(str) != "True"]
-missing_pdf_folder_ids = missing_pdf_rows["folder_id"].tolist()
+selected_rows = edited[edited["Select"] == True]
+selected_folder_ids = selected_rows["Folder ID"].tolist()
 
 st.write(f"Selected **{len(selected_folder_ids)}** folders.")
 st.write(f"Visible missing-PDF folders: **{len(missing_pdf_folder_ids)}**")
-
 
 left, middle, right = st.columns([1, 1, 2])
 
@@ -569,8 +678,8 @@ with middle:
 
 with right:
     if len(selected_folder_ids) > 0:
-        st.caption("Selected folders:")
-        st.write(", ".join(selected_rows["assessment_folder"].tolist()))
+        st.caption("Selected folders")
+        st.write(", ".join(selected_rows["Assessment Folder"].tolist()))
 
 
 folders_to_run = []
