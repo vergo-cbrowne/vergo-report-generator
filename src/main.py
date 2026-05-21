@@ -553,6 +553,108 @@ def _apply_task_context_metadata(report: dict, metadata: dict) -> dict:
     return report
 
 
+def _is_weak_metadata_value(value) -> bool:
+    if value is None:
+        return True
+
+    cleaned = str(value).strip()
+
+    return cleaned.lower() in {
+        "",
+        "unknown",
+        "none",
+        "n/a",
+        "na",
+        "not applicable",
+        "not specified",
+        "confidential",
+    }
+
+
+def _normalize_date_value(value) -> str:
+    """
+    Normalize common date strings to YYYY-MM-DD when possible.
+    """
+    if value is None:
+        return ""
+
+    text = str(value).strip()
+
+    if _is_weak_metadata_value(text):
+        return ""
+
+    # Reject time-only values. These are usually video durations, not assessment dates.
+    if re.fullmatch(r"\d{1,2}:\d{2}:\d{2}", text):
+        return ""
+
+    # Match YYYY-MM-DD inside ISO/date strings.
+    match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", text)
+    if match:
+        return match.group(1)
+
+    # Match YYYY/MM/DD and convert.
+    match = re.search(r"\b(20\d{2})/(\d{2})/(\d{2})\b", text)
+    if match:
+        return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
+
+    return text
+
+
+def _find_assessment_date_in_report_json(data) -> str:
+    """
+    Recursively search report.json for likely assessment/analysis date fields.
+    """
+    preferred_keys = {
+        "assessment_date",
+        "assessmentdate",
+        "analysis_date",
+        "analysisdate",
+        "recorded_date",
+        "recordeddate",
+        "created_date",
+        "createddate",
+        "date",
+    }
+
+    secondary_keys = {
+        "created_at",
+        "createdat",
+        "updated_at",
+        "updatedat",
+        "timestamp",
+        "time",
+    }
+
+    def normalize_key(key) -> str:
+        return str(key).lower().replace(" ", "_").replace("-", "_").replace("/", "_")
+
+    def walk(value, keys_to_match):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                norm = normalize_key(key)
+                compact = norm.replace("_", "")
+
+                if norm in keys_to_match or compact in keys_to_match:
+                    date_value = _normalize_date_value(item)
+                    if date_value:
+                        return date_value
+
+            for item in value.values():
+                found = walk(item, keys_to_match)
+                if found:
+                    return found
+
+        elif isinstance(value, list):
+            for item in value:
+                found = walk(item, keys_to_match)
+                if found:
+                    return found
+
+        return ""
+
+    return walk(data, preferred_keys) or walk(data, secondary_keys)
+
+
 def main():
     args = parse_args()
 
@@ -600,6 +702,21 @@ def main():
             combined_metadata["company"] = inferred_company
             combined_metadata["client"] = inferred_company
             print(f"Metadata: Inferred company from processed folder name: {inferred_company}")
+
+    # Default assessor if missing.
+    if _is_weak_metadata_value(combined_metadata.get("Assessor name")) and _is_weak_metadata_value(combined_metadata.get("assessor")):
+        combined_metadata["Assessor name"] = "Vergo Ergonomics Team"
+        combined_metadata["assessor"] = "Vergo Ergonomics Team"
+        print("Metadata: Defaulted assessor to Vergo Ergonomics Team")
+
+    # Improve assessment date from report.json if missing.
+    existing_date = combined_metadata.get("Assessment date") or combined_metadata.get("assessment_date")
+    if _is_weak_metadata_value(existing_date):
+        inferred_date = _find_assessment_date_in_report_json(report_data)
+        if inferred_date:
+            combined_metadata["Assessment date"] = inferred_date
+            combined_metadata["assessment_date"] = inferred_date
+            print(f"Metadata: Inferred assessment date from report.json: {inferred_date}")
 
     report_for_rendering = _apply_task_context_metadata(report_for_rendering, combined_metadata)
 
