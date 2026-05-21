@@ -90,6 +90,48 @@ def run_batch(folder_ids: list[str], credentials_path: str, prompt_path: str, mo
     return result.returncode, output, summary
 
 
+def make_link(url: str, label: str) -> str:
+    if not isinstance(url, str) or not url.strip():
+        return ""
+    return f'<a href="{url}" target="_blank">{label}</a>'
+
+
+def build_status_badge(row) -> str:
+    has_pdf = str(row.get("has_pdf", "")).lower() == "true"
+    status = str(row.get("status", "")).strip().lower()
+    has_json = str(row.get("has_report_json", "")).lower() == "true"
+    has_snapshots = str(row.get("has_snapshots", "")).lower() == "true"
+
+    if not has_json or not has_snapshots:
+        return "⚫ Invalid"
+
+    if has_pdf and status == "completed":
+        return "🟢 Completed"
+
+    if has_pdf and status != "completed":
+        return "🟡 Needs Review"
+
+    return "🔵 Ready"
+
+
+def clean_batch_summary(summary_df: pd.DataFrame, assessment_date_required: bool) -> pd.DataFrame:
+    if summary_df.empty:
+        return summary_df
+
+    df = summary_df.copy()
+
+    if not assessment_date_required and "weak_metadata" in df.columns:
+        df["weak_metadata"] = (
+            df["weak_metadata"]
+            .astype(str)
+            .str.replace("assessment_date", "", regex=False)
+            .str.replace(";;", ";", regex=False)
+            .str.strip(";")
+        )
+
+    return df
+
+
 with st.sidebar:
     st.header("Settings")
 
@@ -102,6 +144,12 @@ with st.sidebar:
         "Full Drive scan",
         value=False,
         help="Leave off for faster testing. Turn on when you want to scan everything.",
+    )
+
+    assessment_date_required = st.checkbox(
+        "Require assessment date",
+        value=False,
+        help="If off, missing assessment dates are not treated as a review warning.",
     )
 
     st.divider()
@@ -149,6 +197,11 @@ if valid_df.empty:
     st.stop()
 
 
+valid_df["status_badge"] = valid_df.apply(build_status_badge, axis=1)
+valid_df["folder"] = valid_df.apply(lambda row: make_link(row.get("folder_link", ""), "Folder"), axis=1)
+valid_df["pdf"] = valid_df.apply(lambda row: make_link(row.get("pdf_link", ""), "PDF"), axis=1)
+
+
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
@@ -165,7 +218,7 @@ with col2:
     account_filter = st.selectbox("Account/User", accounts)
 
 with col3:
-    status_options = ["All", "Missing PDF", "Completed", "Not completed"]
+    status_options = ["All", "Ready", "Completed", "Needs Review", "Missing PDF"]
     status_filter = st.selectbox("Status filter", status_options)
 
 with col4:
@@ -180,12 +233,14 @@ if company_filter != "All":
 if account_filter != "All":
     filtered = filtered[filtered["account"] == account_filter]
 
-if status_filter == "Missing PDF":
-    filtered = filtered[filtered["has_pdf"].astype(str) != "True"]
+if status_filter == "Ready":
+    filtered = filtered[filtered["status_badge"] == "🔵 Ready"]
 elif status_filter == "Completed":
-    filtered = filtered[filtered["status"] == "completed"]
-elif status_filter == "Not completed":
-    filtered = filtered[filtered["status"] != "completed"]
+    filtered = filtered[filtered["status_badge"] == "🟢 Completed"]
+elif status_filter == "Needs Review":
+    filtered = filtered[filtered["status_badge"] == "🟡 Needs Review"]
+elif status_filter == "Missing PDF":
+    filtered = filtered[filtered["has_pdf"].astype(str) != "True"]
 
 if search.strip():
     filtered = filtered[
@@ -199,14 +254,38 @@ display_columns = [
     "company",
     "account",
     "assessment_folder",
+    "status_badge",
     "has_pdf",
     "status",
+    "folder",
+    "pdf",
     "has_report_json",
     "has_snapshots",
     "has_video",
     "modified_time",
     "folder_id",
 ]
+
+link_display = filtered[
+    [
+        "company",
+        "account",
+        "assessment_folder",
+        "status_badge",
+        "has_pdf",
+        "status",
+        "folder",
+        "pdf",
+        "modified_time",
+    ]
+].copy()
+
+st.markdown(
+    link_display.to_html(escape=False, index=False),
+    unsafe_allow_html=True,
+)
+
+st.caption("Use the selectable table below to choose folders for generation.")
 
 filtered_display = filtered[display_columns].copy()
 filtered_display.insert(0, "select", False)
@@ -225,9 +304,14 @@ edited = st.data_editor(
 selected_rows = edited[edited["select"] == True]
 selected_folder_ids = selected_rows["folder_id"].tolist()
 
-st.write(f"Selected **{len(selected_folder_ids)}** folders.")
+missing_pdf_rows = filtered[filtered["has_pdf"].astype(str) != "True"]
+missing_pdf_folder_ids = missing_pdf_rows["folder_id"].tolist()
 
-left, right = st.columns([1, 2])
+st.write(f"Selected **{len(selected_folder_ids)}** folders.")
+st.write(f"Visible missing-PDF folders: **{len(missing_pdf_folder_ids)}**")
+
+
+left, middle, right = st.columns([1, 1, 2])
 
 with left:
     generate_clicked = st.button(
@@ -237,20 +321,41 @@ with left:
         use_container_width=True,
     )
 
+with middle:
+    generate_missing_clicked = st.button(
+        "Generate all visible missing PDFs",
+        disabled=len(missing_pdf_folder_ids) == 0,
+        use_container_width=True,
+    )
+
 with right:
     if len(selected_folder_ids) > 0:
         st.caption("Selected folders:")
         st.write(", ".join(selected_rows["assessment_folder"].tolist()))
 
 
+folders_to_run = []
+run_label = ""
+
 if generate_clicked:
-    with st.spinner("Generating selected reports..."):
+    folders_to_run = selected_folder_ids
+    run_label = "selected reports"
+
+if generate_missing_clicked:
+    folders_to_run = missing_pdf_folder_ids
+    run_label = "visible missing PDFs"
+
+
+if folders_to_run:
+    with st.spinner(f"Generating {len(folders_to_run)} {run_label}..."):
         returncode, output, summary_df = run_batch(
-            folder_ids=selected_folder_ids,
+            folder_ids=folders_to_run,
             credentials_path=credentials_path,
             prompt_path=prompt_path,
             model=model,
         )
+
+    summary_df = clean_batch_summary(summary_df, assessment_date_required)
 
     if returncode == 0:
         st.success("Batch generation completed.")
