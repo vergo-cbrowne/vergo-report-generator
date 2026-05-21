@@ -245,3 +245,35 @@ Rules:
 - Do not change module numbers.
 - Use the exact module number and exact module title from the approved list.
 - If no module is a perfect match, choose the closest relevant approved module and explain why.
+
+## REBA/RULA Risk Interpretation and Tone Requirements
+
+Use a balanced, practical, non-alarmist tone. The report is for safety managers who may not have formal ergonomics training.
+
+Do not overstate the meaning of REBA/RULA scores. REBA and RULA are screening tools, not injury prediction tools. A score does not mean that injury is expected or inevitable.
+
+Always interpret scores alongside task frequency, duration, force/load, repetition, recovery time, work pace, environmental conditions, worker variability, and whether the video reflects typical work.
+
+Use these REBA risk bands exactly:
+- REBA 1: Negligible risk
+- REBA 2–3: Low risk
+- REBA 4–7: Medium risk
+- REBA 8–10: High risk
+- REBA 11–15: Very high risk
+
+Use these RULA action levels exactly:
+- RULA 1–2: Acceptable if not maintained or repeated for long periods
+- RULA 3–4: Further investigation; changes may be needed
+- RULA 5–6: Investigation and changes needed soon
+- RULA 7: Investigation and changes needed immediately
+
+For routine, low-force, or moderate-score tasks, use proportionate language such as:
+- “warrants review”
+- “improvements are recommended”
+- “may help reduce cumulative strain”
+- “should be considered alongside frequency, duration, force, and recovery time”
+
+Avoid alarmist language unless the video clearly shows an immediate safety hazard such as fall risk, loss of control, unstable footing, or heavy uncontrolled force.
+
+Do not describe REBA 4–7 as high risk. For REBA, scores 4–7 are Medium.
+Do not describe routine Medium-band tasks as dangerous. Explain them as opportunities for practical prevention.

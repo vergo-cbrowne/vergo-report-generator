@@ -709,7 +709,25 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
         break-inside: avoid;
       }}
     }}
-  </style>
+  
+.interpretation-box {
+  margin: 18px 0 22px 0;
+  padding: 16px 18px;
+  border-left: 5px solid #78c257;
+  background: #f5faf3;
+  border-radius: 8px;
+}
+.interpretation-box h3 {
+  margin: 0 0 8px 0;
+  color: #1f3b1d;
+  font-size: 16px;
+}
+.interpretation-box p {
+  margin: 0;
+  color: #2f3a2f;
+  line-height: 1.45;
+}
+</style>
 </head>
 
 <body>
@@ -737,7 +755,7 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
 
   {_section("Section 1 – Assessment Overview", assessment_overview)}
   {_section("Section 2 – Summary of Assessment Results", summary_body)}
-  {_section("Section 3 – Task-Based Risk Exposure Analysis", risk_body)}
+  {_section("{safety_manager_interpretation_html}\nSection 3 – Task-Based Risk Exposure Analysis", risk_body)}
   {_section("Section 4 – Overall Observations", observations_body)}
   {_section("Section 5 – Overall Recommendations", recommendations_body)}
   {_section("Section 6 – Targeted Vergo Training Videos", training_body)}
