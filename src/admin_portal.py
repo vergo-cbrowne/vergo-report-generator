@@ -1,3 +1,4 @@
+import base64
 import csv
 import subprocess
 import sys
@@ -16,6 +17,205 @@ DEFAULT_MODEL = "gpt-4.1"
 SCAN_CSV = "output/drive_scan.csv"
 BATCH_SUMMARY_CSV = "output/portal_batch_summary.csv"
 
+LOGO_PATH = "assets/vergo-logo-white-transparent.png"
+
+
+def image_to_base64(path: str) -> str:
+    file_path = Path(path)
+    if not file_path.exists():
+        return ""
+    return base64.b64encode(file_path.read_bytes()).decode("utf-8")
+
+
+def apply_vergo_theme():
+    logo_b64 = image_to_base64(LOGO_PATH)
+
+    logo_html = ""
+    if logo_b64:
+        logo_html = f"""
+        <div class="vergo-brand">
+            <img src="data:image/png;base64,{logo_b64}" class="vergo-logo" />
+        </div>
+        """
+
+    st.markdown(
+        f"""
+        <style>
+        :root {{
+            --bg: #050914;
+            --panel: rgba(16, 24, 39, 0.76);
+            --panel-strong: rgba(23, 34, 55, 0.92);
+            --line: rgba(148, 163, 184, 0.18);
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --green: #79d14f;
+            --cyan: #38bdf8;
+            --blue: #2563eb;
+            --warning: #facc15;
+            --danger: #fb7185;
+        }}
+
+        .stApp {{
+            background:
+                radial-gradient(circle at 18% 10%, rgba(56, 189, 248, 0.16), transparent 30%),
+                radial-gradient(circle at 82% 20%, rgba(121, 209, 79, 0.10), transparent 28%),
+                linear-gradient(135deg, #030712 0%, #07111f 45%, #020617 100%);
+            color: var(--text);
+        }}
+
+        section[data-testid="stSidebar"] {{
+            background: rgba(8, 13, 25, 0.92);
+            border-right: 1px solid var(--line);
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.32);
+        }}
+
+        section[data-testid="stSidebar"] > div {{
+            padding-top: 1.2rem;
+        }}
+
+        .vergo-brand {{
+            padding: 0.8rem 0 1.3rem 0;
+            display: flex;
+            align-items: center;
+        }}
+
+        .vergo-logo {{
+            width: 172px;
+            max-width: 92%;
+            filter: drop-shadow(0 0 18px rgba(121, 209, 79, 0.22));
+        }}
+
+        .hero-card {{
+            padding: 1.45rem 1.6rem;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background:
+                linear-gradient(135deg, rgba(30, 41, 59, 0.84), rgba(15, 23, 42, 0.60)),
+                radial-gradient(circle at 90% 10%, rgba(56, 189, 248, 0.18), transparent 34%);
+            border-radius: 24px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+            margin-bottom: 1.3rem;
+        }}
+
+        .hero-title {{
+            font-size: 2.1rem;
+            line-height: 1.05;
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }}
+
+        .hero-subtitle {{
+            color: var(--muted);
+            margin-top: 0.6rem;
+            max-width: 760px;
+            font-size: 0.98rem;
+        }}
+
+        .metric-grid {{
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin: 1rem 0 1.2rem 0;
+        }}
+
+        .metric-card {{
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 18px;
+            padding: 1rem 1.05rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 14px 40px rgba(0,0,0,0.22);
+        }}
+
+        .metric-label {{
+            color: var(--muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.45rem;
+        }}
+
+        .metric-value {{
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: var(--text);
+        }}
+
+        .metric-accent {{
+            color: var(--green);
+        }}
+
+        div[data-testid="stSelectbox"] > div,
+        div[data-testid="stTextInput"] > div,
+        div[data-testid="stCheckbox"] {{
+            border-radius: 14px;
+        }}
+
+        .stButton > button {{
+            border-radius: 16px !important;
+            border: 1px solid rgba(121, 209, 79, 0.26) !important;
+            background: linear-gradient(135deg, #69c94a 0%, #16a34a 45%, #0f766e 100%) !important;
+            color: white !important;
+            font-weight: 750 !important;
+            box-shadow: 0 14px 35px rgba(34, 197, 94, 0.22) !important;
+            min-height: 3rem;
+        }}
+
+        .stButton > button:hover {{
+            transform: translateY(-1px);
+            border-color: rgba(56, 189, 248, 0.55) !important;
+            box-shadow: 0 18px 44px rgba(56, 189, 248, 0.20) !important;
+        }}
+
+        div[data-testid="stDataFrame"],
+        div[data-testid="stDataEditor"] {{
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+        }}
+
+        .status-chip {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.28rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: 1px solid rgba(255,255,255,0.10);
+        }}
+
+        .chip-ready {{ background: rgba(56, 189, 248, 0.16); color: #7dd3fc; }}
+        .chip-completed {{ background: rgba(34, 197, 94, 0.16); color: #86efac; }}
+        .chip-review {{ background: rgba(250, 204, 21, 0.16); color: #fde68a; }}
+        .chip-failed {{ background: rgba(251, 113, 133, 0.16); color: #fda4af; }}
+
+        a {{
+            color: #7dd3fc !important;
+            text-decoration: none;
+            font-weight: 700;
+        }}
+
+        a:hover {{
+            color: #bbf7d0 !important;
+            text-decoration: underline;
+        }}
+
+        hr {{
+            border-color: rgba(148, 163, 184, 0.16);
+        }}
+
+        @media (max-width: 1100px) {{
+            .metric-grid {{
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }}
+        }}
+        </style>
+        {logo_html}
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 st.set_page_config(
     page_title="Vergo Report Admin",
@@ -23,8 +223,20 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("Vergo Report Admin Portal")
-st.caption("Scan Google Drive, select assessment folders, and generate Vergo PDF reports.")
+apply_vergo_theme()
+
+st.markdown(
+    """
+    <div class="hero-card">
+        <h1 class="hero-title">Vergo Report Admin Portal</h1>
+        <div class="hero-subtitle">
+            Scan Google Drive, review processed assessment folders, generate branded ergonomic PDF reports,
+            and track batch results from one operations dashboard.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 def load_scan_csv(path: str) -> pd.DataFrame:
@@ -248,7 +460,34 @@ if search.strip():
     ]
 
 
-st.write(f"Showing **{len(filtered)}** valid assessment folders.")
+completed_count = len(filtered[filtered["status_badge"] == "🟢 Completed"])
+ready_count = len(filtered[filtered["status_badge"] == "🔵 Ready"])
+review_count = len(filtered[filtered["status_badge"] == "🟡 Needs Review"])
+missing_pdf_count = len(filtered[filtered["has_pdf"].astype(str) != "True"])
+
+st.markdown(
+    f"""
+    <div class="metric-grid">
+        <div class="metric-card">
+            <div class="metric-label">Visible folders</div>
+            <div class="metric-value">{len(filtered)}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Ready</div>
+            <div class="metric-value metric-accent">{ready_count}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Completed</div>
+            <div class="metric-value">{completed_count}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Missing PDF</div>
+            <div class="metric-value">{missing_pdf_count}</div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 display_columns = [
     "company",
