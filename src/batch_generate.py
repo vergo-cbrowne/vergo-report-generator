@@ -105,15 +105,41 @@ def run_one(folder_id: str, credentials_path: str, prompt_path: str, model: str)
     if not success:
         error_tail = "\n".join(output.splitlines()[-20:])
 
+    company = extract_html_value("Company") if success else "Not available"
+    site = extract_html_value("Site / Location") if success else "Not available"
+    assessment_date = extract_html_value("Assessment Date") if success else "Not available"
+    method = extract_html_value("Assessment Method") if success else "Not available"
+    assessor = extract_html_value("Assessor") if success else "Not available"
+
+    weak_values = {"", "Not specified", "Confidential", "Not found", "Not available"}
+
+    weak_metadata_items = []
+
+    if company in weak_values:
+        weak_metadata_items.append("company")
+
+    if site in weak_values:
+        weak_metadata_items.append("site")
+
+    if assessment_date in weak_values:
+        weak_metadata_items.append("assessment_date")
+
+    if method in weak_values:
+        weak_metadata_items.append("method")
+
+    if assessor in weak_values:
+        weak_metadata_items.append("assessor")
+
     return {
         "folder_id": folder_id,
         "success": success,
         "returncode": result.returncode,
-        "company": extract_html_value("Company") if success else "Not available",
-        "site": extract_html_value("Site / Location") if success else "Not available",
-        "assessment_date": extract_html_value("Assessment Date") if success else "Not available",
-        "method": extract_html_value("Assessment Method") if success else "Not available",
-        "assessor": extract_html_value("Assessor") if success else "Not available",
+        "company": company,
+        "site": site,
+        "assessment_date": assessment_date,
+        "method": method,
+        "assessor": assessor,
+        "weak_metadata": ";".join(weak_metadata_items),
         "started_at": started_at,
         "error_tail": error_tail,
     }
@@ -132,6 +158,7 @@ def write_summary_csv(results: list[dict], output_path: str) -> None:
         "assessment_date",
         "method",
         "assessor",
+        "weak_metadata",
         "started_at",
         "error_tail",
     ]
@@ -256,12 +283,20 @@ def main():
         print(f"  Assessment Date: {item['assessment_date']}")
         print(f"  Assessment Method: {item['method']}")
         print(f"  Assessor: {item['assessor']}")
+        print(f"  Weak Metadata: {item.get('weak_metadata', '') or 'None'}")
         print(f"  Return code: {item['returncode']}")
 
     failed = [item for item in results if not item["success"]]
+    weak = [item for item in results if item.get("weak_metadata")]
 
     print("")
     print(f"Completed: {len(results) - len(failed)} successful, {len(failed)} failed, {len(results)} total.")
+
+    if weak:
+        print("")
+        print("Weak metadata review list:")
+        for item in weak:
+            print(f"- {item['folder_id']}: {item.get('weak_metadata')}")
 
     write_summary_csv(results, args.summary_csv)
 
