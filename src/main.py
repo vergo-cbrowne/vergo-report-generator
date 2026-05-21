@@ -407,6 +407,33 @@ def _extract_report_json_metadata_auto(report_data: dict) -> dict:
     return metadata
 
 
+
+def _infer_company_from_folder_name(folder_name: str) -> str:
+    """
+    Infer client/company from processed assessment folder names.
+
+    Examples:
+    - Cameco_Vergo_3 - b5ee8 -> Cameco
+    - EastCut_Vergo_1 - abc123 -> EastCut
+    - VenRez Lift Assist Counter Top Feed - ae484 -> ""
+      because this is a task name, not a company name.
+    """
+    cleaned = _clean_metadata_value(folder_name)
+    if not cleaned:
+        return ""
+
+    # Remove trailing generated IDs, e.g. " - b5ee8"
+    cleaned = re.sub(r"\s*-\s*[a-zA-Z0-9]{4,}$", "", cleaned).strip()
+
+    if "_Vergo" in cleaned:
+        return _clean_metadata_value(cleaned.split("_Vergo", 1)[0].replace("_", " "))
+
+    if "- Vergo" in cleaned:
+        return _clean_metadata_value(cleaned.split("- Vergo", 1)[0])
+
+    return ""
+
+
 def _get_drive_folder_metadata(service, assessment_folder_id: str) -> dict:
     """
     Use Vergo's Google Drive folder structure for fallback metadata.
