@@ -278,7 +278,7 @@ def apply_vergo_theme():
             }}
         }}
         
-        .login-card {
+        .login-card {{
             max-width: 560px;
             margin: 1.2rem auto 0 auto;
             padding: 1.15rem;
@@ -286,9 +286,9 @@ def apply_vergo_theme():
             border: 1px solid rgba(148, 163, 184, 0.18);
             border-radius: 18px;
             box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
-        }
+        }}
 
-        div[data-testid="stForm"] {
+        div[data-testid="stForm"] {{
             max-width: 560px;
             margin: 1.2rem auto 0 auto;
             padding: 1.15rem;
@@ -296,7 +296,7 @@ def apply_vergo_theme():
             border: 1px solid rgba(148, 163, 184, 0.18);
             border-radius: 18px;
             box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
-        }
+        }}
 
         </style>
         {sidebar_logo}
