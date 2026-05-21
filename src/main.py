@@ -409,14 +409,18 @@ def _extract_report_json_metadata_auto(report_data: dict) -> dict:
 
 def _get_drive_folder_metadata(service, assessment_folder_id: str) -> dict:
     """
-    Use Google Drive folder names as fallback metadata.
+    Use Vergo's Google Drive folder structure for fallback metadata.
 
-    Intended structure:
-    Client folder
-      └── Assessment folder
+    Expected structure:
+    Company folder
+      └── Account detail / user folder
+          └── Processed assessment folder
 
-    Parent folder = company/client fallback.
-    Assessment folder = site/location fallback.
+    Therefore:
+    - Company should usually be the grandparent folder.
+    - Site / Location should be the processed assessment folder name.
+    - If no grandparent exists, fall back to inferring from the processed folder name.
+    - If that fails, fall back to the immediate parent.
     """
     try:
         folder = service.files().get(
@@ -428,21 +432,37 @@ def _get_drive_folder_metadata(service, assessment_folder_id: str) -> dict:
         assessment_folder_name = _clean_metadata_value(folder.get("name", ""))
         parents = folder.get("parents", []) or []
 
-        parent_folder_name = ""
+        immediate_parent_name = ""
+        grandparent_name = ""
+
         if parents:
             parent = service.files().get(
                 fileId=parents[0],
-                fields="id,name,mimeType",
+                fields="id,name,parents,mimeType",
                 supportsAllDrives=True,
             ).execute()
-            parent_folder_name = _clean_metadata_value(parent.get("name", ""))
+
+            immediate_parent_name = _clean_metadata_value(parent.get("name", ""))
+            grandparent_ids = parent.get("parents", []) or []
+
+            if grandparent_ids:
+                grandparent = service.files().get(
+                    fileId=grandparent_ids[0],
+                    fields="id,name,mimeType",
+                    supportsAllDrives=True,
+                ).execute()
+                grandparent_name = _clean_metadata_value(grandparent.get("name", ""))
+
+        inferred_from_processed_folder = _infer_company_from_folder_name(assessment_folder_name)
+
+        company = grandparent_name or inferred_from_processed_folder or immediate_parent_name
 
         metadata = {}
 
-        if parent_folder_name:
-            metadata["Company/Client name"] = parent_folder_name
-            metadata["company"] = parent_folder_name
-            metadata["client"] = parent_folder_name
+        if company:
+            metadata["Company/Client name"] = company
+            metadata["company"] = company
+            metadata["client"] = company
 
         if assessment_folder_name:
             metadata["Site location or facility name"] = assessment_folder_name
