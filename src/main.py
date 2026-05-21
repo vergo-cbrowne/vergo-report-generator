@@ -450,7 +450,7 @@ def _get_drive_folder_metadata(service, assessment_folder_id: str) -> dict:
             metadata["site"] = assessment_folder_name
 
         if metadata:
-            print(f"Metadata: Extracted from Drive folder structure: {metadata}")
+            print(f"Metadata: Extracted folder metadata: {metadata}")
 
         return metadata
 
@@ -494,7 +494,7 @@ def _apply_task_context_metadata(report: dict, metadata: dict) -> dict:
         print("Metadata: No usable metadata extracted from task_context.txt.")
         return report
 
-    print(f"Metadata: Applying task_context.txt metadata overrides: {metadata}")
+    print(f"Metadata: Applying final report metadata: {metadata}")
 
     cover_details = report.get("cover_details")
     if not isinstance(cover_details, dict):
