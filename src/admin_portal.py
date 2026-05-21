@@ -422,8 +422,7 @@ st.markdown(
         <div class="hero-kicker">Vergo Operations</div>
         <h1 class="hero-title">Report Admin Portal</h1>
         <div class="hero-subtitle">
-            Scan Google Drive, review processed assessment folders, generate branded ergonomic PDF reports,
-            and track batch results from one operations dashboard.
+            Scan Google Drive, review processed assessment folders, generate Vergo movement analysis reports, and monitor batch results from one operations dashboard.
         </div>
     </div>
     """,
