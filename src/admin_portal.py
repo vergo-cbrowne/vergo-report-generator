@@ -277,6 +277,27 @@ def apply_vergo_theme():
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }}
         }}
+        
+        .login-card {
+            max-width: 560px;
+            margin: 1.2rem auto 0 auto;
+            padding: 1.15rem;
+            background: rgba(15, 23, 42, 0.62);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 18px;
+            box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+        }
+
+        div[data-testid="stForm"] {
+            max-width: 560px;
+            margin: 1.2rem auto 0 auto;
+            padding: 1.15rem;
+            background: rgba(15, 23, 42, 0.62);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 18px;
+            box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+        }
+
         </style>
         {sidebar_logo}
         """,
