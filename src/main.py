@@ -799,6 +799,16 @@ def main():
         "application/pdf",
     )
 
+    if report_filename != "vergo_report.pdf":
+        print("Cleaning old generic vergo_report.pdf files from assessment folder...")
+        trashed_old_reports = google_drive.trash_files_by_name(
+            service=service,
+            folder_id=args.assessment_folder_id,
+            name="vergo_report.pdf",
+            keep_file_id=uploaded_file.get("id"),
+        )
+        print(f"Old generic PDF files trashed: {trashed_old_reports}")
+
     print("Updating status.json...")
     status_payload = {
         "status": "completed",

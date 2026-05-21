@@ -192,3 +192,48 @@ def create_or_update_json_file(service, folder_id: str, name: str, data: Any) ->
         return update_file_content(service, existing_files[0]["id"], content, "application/json")
 
     return upload_file(service, folder_id, name, content, "application/json")
+
+
+def trash_files_by_name(service, folder_id: str, name: str, keep_file_id: str | None = None) -> int:
+    """
+    Move files with a matching name in a Google Drive folder to Trash.
+
+    Used to clean old generic files such as vergo_report.pdf after the generator
+    starts saving descriptive report filenames.
+    """
+    safe_name = name.replace("'", "\\'")
+
+    query = (
+        f"'{folder_id}' in parents and "
+        f"name = '{safe_name}' and "
+        "trashed = false"
+    )
+
+    results = service.files().list(
+        q=query,
+        fields="files(id, name, modifiedTime)",
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
+    ).execute()
+
+    files = results.get("files", [])
+    trashed_count = 0
+
+    for file in files:
+        file_id = file.get("id")
+
+        if keep_file_id and file_id == keep_file_id:
+            continue
+
+        print(f"Trashing old Google Drive file: {file.get('name')} ({file_id})")
+
+        service.files().update(
+            fileId=file_id,
+            body={"trashed": True},
+            supportsAllDrives=True,
+        ).execute()
+
+        trashed_count += 1
+
+    return trashed_count
+
