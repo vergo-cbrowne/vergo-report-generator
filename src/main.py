@@ -657,6 +657,50 @@ def _find_assessment_date_in_report_json(data) -> str:
     return walk(data, preferred_keys) or walk(data, secondary_keys)
 
 
+def _slugify_report_filename(value: str) -> str:
+    """
+    Convert an assessment folder/task name into a safe PDF filename.
+
+    Example:
+    Sorting and marking paper - 86074
+    -> Sorting_and_marking_paper_Vergo_Report.pdf
+    """
+    if not value:
+        return "Vergo_Report.pdf"
+
+    cleaned = str(value).strip()
+
+    # Remove common generated suffixes, e.g. " - 86074", " - ae484", " - b5ee8"
+    cleaned = re.sub(r"\s*-\s*[A-Za-z0-9]{4,}$", "", cleaned).strip()
+
+    # Keep letters, numbers, spaces, hyphens, and underscores.
+    cleaned = re.sub(r"[^A-Za-z0-9 _-]+", "", cleaned)
+
+    # Convert spaces and hyphens to underscores.
+    cleaned = re.sub(r"[\s-]+", "_", cleaned)
+
+    # Collapse repeated underscores.
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+
+    if not cleaned:
+        cleaned = "Vergo_Report"
+
+    return f"{cleaned}_Vergo_Report.pdf"
+
+
+def _get_assessment_folder_name(service, assessment_folder_id: str) -> str:
+    try:
+        folder = service.files().get(
+            fileId=assessment_folder_id,
+            fields="id,name",
+            supportsAllDrives=True,
+        ).execute()
+        return folder.get("name", "")
+    except Exception as exc:
+        print(f"Could not read assessment folder name for PDF filename: {exc}")
+        return ""
+
+
 def main():
     args = parse_args()
 
@@ -741,7 +785,10 @@ def main():
     print(f"Local PDF report saved to: {pdf_report_path.resolve()}")
 
     print("Uploading PDF report...")
-    report_filename = "vergo_report.pdf"
+    assessment_folder_name = _get_assessment_folder_name(service, args.assessment_folder_id)
+    report_filename = _slugify_report_filename(assessment_folder_name)
+    print(f"PDF Drive filename: {report_filename}")
+
     pdf_bytes = pdf_report_path.read_bytes()
 
     uploaded_file = google_drive.upload_file(
@@ -758,7 +805,7 @@ def main():
         "reportFile": report_filename,
         "reportFileId": uploaded_file.get("id"),
         "htmlReportFile": "vergo_report.html",
-        "pdfReportFile": "vergo_report.pdf",
+        "pdfReportFile": report_filename,
         "uploadedAt": datetime.now(timezone.utc).isoformat(),
     }
 
