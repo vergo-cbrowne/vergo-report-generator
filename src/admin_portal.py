@@ -194,8 +194,7 @@ def apply_vergo_theme():
             overflow: hidden;
             border-radius: 18px;
             border: 1px solid rgba(148, 163, 184, 0.16);
-            box-shadow: 0 18px 55px rgba(0,0,0,0.22);
-            margin-bottom: 1.15rem;
+            margin-bottom: 0;
         }}
 
         .link-table th {{
@@ -433,7 +432,7 @@ st.markdown(
 
 
 with st.sidebar:
-    st.header("Settings")
+    st.header("Configuration")
 
     credentials_path = st.text_input("Credentials path", DEFAULT_CREDENTIALS_PATH)
     root_folder_id = st.text_input("Processed videos root folder ID", DEFAULT_ROOT_FOLDER_ID)
@@ -577,9 +576,44 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+last_modified = "—"
+if len(filtered) > 0 and "modified_time" in filtered.columns:
+    last_modified = format_date(filtered["modified_time"].max())
+
+st.markdown(
+    f"""
+    <div class="action-bar">
+        <div>
+            <strong>Last scan summary</strong><br>
+            <span class="action-copy">
+                Showing {len(filtered)} folders · {ready_count} ready to generate · {completed_count} completed ·
+                {missing_pdf_count} missing PDFs · Latest modified: {last_modified}
+            </span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 missing_pdf_rows = filtered[filtered["has_pdf"].astype(str) != "True"]
 missing_pdf_folder_ids = missing_pdf_rows["folder_id"].tolist()
+
+top_action_left, top_action_right = st.columns([1, 2])
+
+with top_action_left:
+    generate_missing_top_clicked = st.button(
+        "Generate all visible missing PDFs",
+        key="generate_missing_top",
+        disabled=len(missing_pdf_folder_ids) == 0,
+        use_container_width=True,
+    )
+
+with top_action_right:
+    st.caption(
+        "Use filters first, then generate every visible folder that does not already have a PDF."
+    )
+
 
 table_rows = []
 for _, row in filtered.iterrows():
@@ -599,7 +633,11 @@ for _, row in filtered.iterrows():
 preview_df = pd.DataFrame(table_rows)
 
 st.markdown(
-    preview_df.to_html(escape=False, index=False, classes="link-table"),
+    f"""
+    <div class="table-shell">
+        {preview_df.to_html(escape=False, index=False, classes="link-table")}
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
@@ -646,6 +684,7 @@ edited = st.data_editor(
     filtered_display,
     use_container_width=True,
     hide_index=True,
+    height=560,
     column_config={
         "Select": st.column_config.CheckboxColumn("Select"),
         "Folder ID": st.column_config.TextColumn("Folder ID", disabled=True),
@@ -689,7 +728,7 @@ if generate_clicked:
     folders_to_run = selected_folder_ids
     run_label = "selected reports"
 
-if generate_missing_clicked:
+if generate_missing_clicked or generate_missing_top_clicked:
     folders_to_run = missing_pdf_folder_ids
     run_label = "visible missing PDFs"
 
