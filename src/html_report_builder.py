@@ -480,6 +480,32 @@ def validate_report_data(report_data: dict) -> None:
         raise ValueError(message)
 
 
+
+def _clean_display_value(value, fallback="Not specified"):
+    """
+    Clean weak metadata values before displaying them in the report.
+    """
+    if value is None:
+        return fallback
+
+    cleaned = str(value).strip()
+
+    bad_values = {
+        "",
+        "unknown",
+        "none",
+        "n/a",
+        "na",
+        "not specified",
+        "confidential",
+    }
+
+    if cleaned.lower() in bad_values:
+        return fallback
+
+    return cleaned
+
+
 def build_html_report(report_data: dict, output_path: str | Path) -> Path:
     validate_report_data(report_data)
 
