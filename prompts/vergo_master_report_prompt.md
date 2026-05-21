@@ -218,3 +218,30 @@ Before returning the JSON, internally check that:
 - Every training_videos item has a module and content.
 - No generated paragraph ends with an incomplete example or broken sentence.
 - No disclaimer text is included.
+
+## Approved Vergo Training Modules
+
+When writing Section 6 – Targeted Vergo Training Videos, you must only recommend modules from this exact approved list:
+
+- Module 1: Warm-Up
+- Module 2: Power Stance & Power Zone
+- Module 3: The Squat
+- Module 4: Lifting from the Floor
+- Module 5: Pallet to Pallet Transfer
+- Module 6: Pulling a Load
+- Module 7: Pushing a Load
+- Module 8: Using a Ramp
+- Module 9: Transferring Product with Pivoting
+- Module 10: Stepping Mechanics
+- Module 11: Working Above the Shoulders
+- Module 12: Seated Posture
+- Module 13: Seated Driving Posture
+- Module 14: Using Handheld Devices
+- Module 15: Using a Keyboard & Mouse
+
+Rules:
+- Do not invent training module names.
+- Do not rename modules.
+- Do not change module numbers.
+- Use the exact module number and exact module title from the approved list.
+- If no module is a perfect match, choose the closest relevant approved module and explain why.

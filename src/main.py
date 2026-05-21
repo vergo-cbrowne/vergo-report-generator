@@ -13,6 +13,7 @@ import report_generator
 import html_report_builder
 import pdf_builder
 import re
+import training_modules
 
 
 def parse_args():
@@ -725,6 +726,8 @@ def main():
 
     print("Creating HTML report...")
     html_report_path = output_dir / "vergo_report.html"
+    print("Validating targeted Vergo training modules...")
+    report_for_rendering = training_modules.normalize_training_videos(report_for_rendering)
     html_report_builder.build_html_report(report_for_rendering, html_report_path)
     print(f"Local HTML report saved to: {html_report_path.resolve()}")
 
