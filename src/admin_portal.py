@@ -363,7 +363,7 @@ def require_admin_login():
         submitted = st.form_submit_button("Sign in", use_container_width=True)
 
     if submitted:
-        user_ok = hmac.compare_digest(username, admin_user)
+        user_ok = hmac.compare_digest(username.strip().lower(), admin_user.strip().lower())
         password_ok = hmac.compare_digest(password, admin_password)
 
         if user_ok and password_ok:
