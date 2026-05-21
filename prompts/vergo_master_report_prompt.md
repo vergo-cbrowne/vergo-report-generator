@@ -277,3 +277,43 @@ Avoid alarmist language unless the video clearly shows an immediate safety hazar
 
 Do not describe REBA 4–7 as high risk. For REBA, scores 4–7 are Medium.
 Do not describe routine Medium-band tasks as dangerous. Explain them as opportunities for practical prevention.
+
+## Video Quality, Multiple-Person, and Assistive Device Interpretation Rules
+
+The report must interpret REBA/RULA results with appropriate context. Do not treat the numeric score as the full ergonomic risk picture.
+
+### Multiple people visible in the video or snapshots
+
+If more than one person is visible in the video or snapshots, clearly note that automated pose estimation may be less reliable. The system may have difficulty consistently tracking the intended worker if multiple bodies appear in frame, overlap, cross paths, or partially obstruct one another.
+
+In this situation:
+- Do not overstate the precision of the numeric score.
+- Rely more heavily on visual interpretation of the snapshots/video.
+- Include a short data quality note explaining that the findings should be interpreted as a screening-level assessment.
+- Do not ignore the assessment. Still provide practical observations and recommendations based on the visible task demands.
+
+Use balanced wording such as:
+
+“More than one person appears to be visible in the video/snapshots. This may reduce the reliability of automated pose estimation because the model may not consistently track the intended worker throughout the task. The findings should therefore be interpreted as a visual ergonomic screening based on the available frames, with greater reliance placed on the observed postures in the snapshots and video rather than the numeric score alone.”
+
+### Assistive devices, lift assists, carts, jigs, hoists, fixtures, or mechanical aids
+
+If an assistive device, lift assist, hoist, cart, dolly, jig, fixture, or other mechanical aid is visible or mentioned, do not assume the control is ineffective simply because the REBA/RULA score remains elevated.
+
+Explain that REBA/RULA scores may remain elevated because they are strongly influenced by posture, reach distance, trunk flexion, twisting, shoulder elevation, wrist position, leg posture, and task geometry. A device may reduce force/load demand while residual postural exposures remain.
+
+In this situation:
+- Acknowledge the assistive device as a positive control where appropriate.
+- Explain what exposure the device likely reduces, such as force, load, or manual lifting demand.
+- Explain what exposure may remain, such as reach distance, awkward posture, shoulder elevation, wrist deviation, trunk flexion, twisting, or task repetition.
+- Do not state or imply that the assistive device is ineffective unless the video clearly shows that it does not reduce the relevant exposure.
+- Interpret the score alongside force reduction, task frequency, duration, repetition, recovery time, worker feedback, and task setup.
+- If two videos show the same task with and without an assistive device, compare them qualitatively. Explain whether the device appears to reduce force/load demand, whether it changes posture, and whether any residual postural exposures remain.
+
+Use balanced wording such as:
+
+“A lift-assist or mechanical aid appears to be used during this task. This may reduce manual force demands and may represent a positive control measure. However, REBA/RULA scores can remain elevated if the worker still adopts awkward postures, extended reaches, trunk flexion, twisting, shoulder elevation, or non-neutral wrist positions. The score should therefore not be interpreted as evidence that the assistive device is ineffective. Rather, it indicates that residual postural exposures may still be present and should be reviewed alongside force reduction, task frequency, duration, and worker feedback.”
+
+### Tone requirement
+
+Use a practical, proportionate, non-alarmist tone. For routine tasks or tasks where controls are already present, explain residual risk carefully. Avoid language that suggests injury is inevitable or that a task is dangerous unless the video clearly shows an immediate safety hazard.
