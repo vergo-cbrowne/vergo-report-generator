@@ -1,5 +1,7 @@
 from pathlib import Path
 from html import escape
+import re
+from typing import Any
 
 
 DISCLAIMER_TEXT = (
@@ -16,36 +18,14 @@ DISCLAIMER_TEXT = (
 
 
 BODY_KEYS = [
-    "body",
-    "Body",
-    "content",
-    "Content",
-    "details",
-    "Details",
-    "explanation",
-    "Explanation",
-    "description",
-    "Description",
-    "recommendation",
-    "Recommendation",
-    "reason",
-    "Reason",
-    "rationale",
-    "Rationale",
-    "paragraph",
-    "Paragraph",
-    "paragraphs",
-    "Paragraphs",
+    "body", "Body", "content", "Content", "details", "Details",
+    "explanation", "Explanation", "description", "Description",
+    "recommendation", "Recommendation", "reason", "Reason",
+    "rationale", "Rationale", "paragraph", "Paragraph",
+    "paragraphs", "Paragraphs",
 ]
 
-HEADING_KEYS = [
-    "heading",
-    "Heading",
-    "module",
-    "Module",
-    "title",
-    "Title",
-]
+HEADING_KEYS = ["heading", "Heading", "module", "Module", "title", "Title"]
 
 
 def _clean_text(value) -> str:
@@ -57,10 +37,13 @@ def _clean_text(value) -> str:
 
     if isinstance(value, dict):
         parts = []
-        for _, val in value.items():
-            cleaned = _clean_text(val)
-            if cleaned:
-                parts.append(cleaned)
+        for key, val in value.items():
+            cleaned_key = _clean_text(key)
+            cleaned_val = _clean_text(val)
+            if cleaned_key and cleaned_val:
+                parts.append(f"{cleaned_key}: {cleaned_val}")
+            elif cleaned_val:
+                parts.append(cleaned_val)
         return "\n\n".join(parts)
 
     text = str(value).strip()
@@ -132,6 +115,72 @@ def _section(title: str, body: str, css_class: str = "") -> str:
   {body}
 </section>
 """
+
+
+def _normalise_key(key: str) -> str:
+    return str(key).lower().replace(" ", "_").replace("/", "_").replace("-", "_").strip()
+
+
+def _find_value_recursive(data: Any, possible_keys: list[str]) -> Any:
+    wanted = {_normalise_key(key) for key in possible_keys}
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if _normalise_key(key) in wanted:
+                    return item
+
+            for item in value.values():
+                found = walk(item)
+                if found not in ("", None):
+                    return found
+
+        elif isinstance(value, list):
+            for item in value:
+                found = walk(item)
+                if found not in ("", None):
+                    return found
+
+        return ""
+
+    return walk(data)
+
+
+def _to_float(value) -> float | None:
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = _clean_text(value)
+    match = re.search(r"\d+(?:\.\d+)?", text)
+    if not match:
+        return None
+
+    try:
+        return float(match.group(0))
+    except ValueError:
+        return None
+
+
+def _to_int(value) -> int | None:
+    number = _to_float(value)
+    if number is None:
+        return None
+    return int(round(number))
+
+
+def _method_type(method: str) -> str:
+    method_lower = method.lower()
+
+    if "reba" in method_lower:
+        return "REBA"
+
+    if "rula" in method_lower:
+        return "RULA"
+
+    return "REBA/RULA"
 
 
 def _get_cover_details(report_data: dict) -> dict:
@@ -210,6 +259,497 @@ def _get_cover_details(report_data: dict) -> dict:
     }
 
 
+def _risk_level_from_average(method_type: str, average_score: float | None) -> str:
+    if average_score is None:
+        return "Not available"
+
+    if method_type == "REBA":
+        if average_score <= 3:
+            return "Low"
+        if average_score <= 7:
+            if average_score >= 6.5:
+                return "Medium, near the upper end of the Medium band"
+            return "Medium"
+        if average_score <= 10:
+            return "High"
+        return "Very High"
+
+    if method_type == "RULA":
+        if average_score <= 2:
+            return "Acceptable if not maintained or repeated for long periods"
+        if average_score <= 4:
+            return "Further investigation; changes may be needed"
+        if average_score <= 6:
+            return "Investigation and changes needed soon"
+        return "Investigation and changes needed immediately"
+
+    return "Interpret with the selected screening method"
+
+
+def _score_label(method_type: str) -> str:
+    if method_type == "REBA":
+        return "Average REBA Score"
+    if method_type == "RULA":
+        return "Average RULA Score"
+    return "Average Score"
+
+
+def _scores_from_report_json(report_data: dict) -> list[float]:
+    scores = []
+
+    score_key_terms = [
+        "reba_score",
+        "rula_score",
+        "final_reba",
+        "final_rula",
+        "final_score",
+        "overall_score",
+        "risk_score",
+    ]
+
+    excluded_key_terms = [
+        "average",
+        "mean",
+        "median",
+        "min",
+        "max",
+        "summary",
+        "distribution",
+        "risk_level",
+        "risk_band",
+    ]
+
+    def looks_like_frame_score_key(key: str) -> bool:
+        norm = _normalise_key(key)
+        if any(term in norm for term in excluded_key_terms):
+            return False
+        return any(term in norm for term in score_key_terms)
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if looks_like_frame_score_key(key):
+                    number = _to_float(item)
+                    if number is not None and 0 <= number <= 15:
+                        scores.append(number)
+                walk(item)
+
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(report_data)
+
+    return [score for score in scores if score is not None]
+
+
+def _get_score_summary_data(report_data: dict, metadata: dict) -> dict:
+    score_summary = report_data.get("score_summary")
+    method_type = _method_type(metadata.get("assessment_method", ""))
+
+    if isinstance(score_summary, dict):
+        method_from_summary = _clean_text(
+            score_summary.get("assessment_method_type")
+            or score_summary.get("method_type")
+            or score_summary.get("score_type")
+            or ""
+        )
+
+        if method_from_summary.upper() in {"REBA", "RULA"}:
+            method_type = method_from_summary.upper()
+
+        total_frames = _to_int(
+            score_summary.get("total_frames_analyzed")
+            or score_summary.get("total_frames")
+            or score_summary.get("frames_analyzed")
+        )
+
+        average_score = _to_float(
+            score_summary.get("average_score")
+            or score_summary.get("average_reba_score")
+            or score_summary.get("average_rula_score")
+        )
+
+        if average_score is not None:
+            average_score = round(average_score, 1)
+
+        overall_risk = _clean_text(
+            score_summary.get("overall_risk_level")
+            or score_summary.get("risk_level")
+            or ""
+        )
+
+        if not overall_risk or overall_risk.lower() in {"none", "unknown", "not available"}:
+            overall_risk = _risk_level_from_average(method_type, average_score)
+
+        distribution = score_summary.get("score_distribution") or score_summary.get("distribution") or []
+
+        if not isinstance(distribution, list):
+            distribution = []
+
+        extracted_scores = _scores_from_report_json(report_data)
+
+        if total_frames is None and extracted_scores:
+            total_frames = len(extracted_scores)
+
+        if average_score is None and extracted_scores:
+            average_score = round(sum(extracted_scores) / len(extracted_scores), 1)
+            overall_risk = _risk_level_from_average(method_type, average_score)
+
+        return {
+            "method_type": method_type,
+            "total_frames": total_frames,
+            "average_score": average_score,
+            "overall_risk": overall_risk,
+            "score_distribution": distribution,
+            "extracted_scores": extracted_scores,
+        }
+
+    extracted_scores = _scores_from_report_json(report_data)
+    total_frames = len(extracted_scores) if extracted_scores else None
+    average_score = round(sum(extracted_scores) / len(extracted_scores), 1) if extracted_scores else None
+    overall_risk = _risk_level_from_average(method_type, average_score)
+
+    return {
+        "method_type": method_type,
+        "total_frames": total_frames,
+        "average_score": average_score,
+        "overall_risk": overall_risk,
+        "score_distribution": [],
+        "extracted_scores": extracted_scores,
+    }
+
+
+def _format_number(value: float | int | None) -> str:
+    if value is None:
+        return "Not available"
+
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+
+    return f"{value:.1f}" if isinstance(value, float) else str(value)
+
+
+def _count_scores_by_band(scores: list[float], method_type: str) -> dict[str, int]:
+    counts = {}
+
+    if method_type == "REBA":
+        bands = {
+            "1-3": lambda score: 1 <= score <= 3,
+            "4-7": lambda score: 4 <= score <= 7,
+            "8-10": lambda score: 8 <= score <= 10,
+            "11-15": lambda score: 11 <= score <= 15,
+        }
+    else:
+        bands = {
+            "1-2": lambda score: 1 <= score <= 2,
+            "3-4": lambda score: 3 <= score <= 4,
+            "5-6": lambda score: 5 <= score <= 6,
+            "7": lambda score: score >= 7,
+        }
+
+    for band_key, rule in bands.items():
+        counts[band_key] = sum(1 for score in scores if rule(score))
+
+    return counts
+
+
+def _distribution_rows(report_data: dict, method_type: str, total_frames: int | None, extracted_scores: list[float]) -> list[dict]:
+    score_summary = report_data.get("score_summary") if isinstance(report_data.get("score_summary"), dict) else {}
+    structured_distribution = score_summary.get("score_distribution") or []
+
+    if structured_distribution and isinstance(structured_distribution, list):
+        rows = []
+
+        for item in structured_distribution:
+            if not isinstance(item, dict):
+                continue
+
+            score_range = _clean_text(item.get("score_range") or item.get("range") or "")
+            risk_band = _clean_text(item.get("risk_band") or item.get("band") or "")
+            interpretation = _clean_text(item.get("interpretation") or "")
+            frames_display = _clean_text(item.get("frames_display") or "")
+
+            frames_count = _to_int(item.get("frames_count") or item.get("count") or item.get("frames"))
+            frames_percent = _to_int(item.get("frames_percent") or item.get("percent") or item.get("percentage"))
+
+            if not frames_display:
+                if frames_count is not None and total_frames:
+                    frames_percent = round((frames_count / total_frames) * 100)
+                    frames_display = f"{frames_percent}% ({frames_count})"
+                elif frames_count is not None:
+                    frames_display = f"({frames_count})"
+                else:
+                    frames_display = "Not available"
+
+            if not score_range:
+                continue
+
+            lower_band = risk_band.lower()
+            if "very" in lower_band or "immediate" in lower_band:
+                css = "risk-very-high"
+            elif "high" in lower_band or "soon" in lower_band:
+                css = "risk-high"
+            elif "medium" in lower_band or "investigation" in lower_band:
+                css = "risk-medium"
+            else:
+                css = "risk-low"
+
+            rows.append(
+                {
+                    "range": score_range,
+                    "band": risk_band or "Not available",
+                    "frames": frames_display,
+                    "interpretation": interpretation or "Not available",
+                    "css": css,
+                }
+            )
+
+        if rows:
+            return rows
+
+    counts = _count_scores_by_band(extracted_scores, method_type) if extracted_scores else {}
+
+    if method_type == "REBA":
+        rows = [
+            {
+                "range": "1–3",
+                "range_key": "1-3",
+                "band": "Low (Scores 1–3)",
+                "interpretation": "Low risk; may need attention",
+                "css": "risk-low",
+            },
+            {
+                "range": "4–7",
+                "range_key": "4-7",
+                "band": "Medium (Scores 4–7)",
+                "interpretation": "Further investigation and changes recommended",
+                "css": "risk-medium",
+            },
+            {
+                "range": "8–10",
+                "range_key": "8-10",
+                "band": "High (Scores 8–10)",
+                "interpretation": "Investigation and implement changes soon",
+                "css": "risk-high",
+            },
+            {
+                "range": "11–15",
+                "range_key": "11-15",
+                "band": "Very High (Scores 11–15)",
+                "interpretation": "Implement changes immediately",
+                "css": "risk-very-high",
+            },
+        ]
+    else:
+        rows = [
+            {
+                "range": "1–2",
+                "range_key": "1-2",
+                "band": "Acceptable (Scores 1–2)",
+                "interpretation": "Acceptable if not maintained or repeated for long periods",
+                "css": "risk-low",
+            },
+            {
+                "range": "3–4",
+                "range_key": "3-4",
+                "band": "Further Investigation (Scores 3–4)",
+                "interpretation": "Further investigation; changes may be needed",
+                "css": "risk-medium",
+            },
+            {
+                "range": "5–6",
+                "range_key": "5-6",
+                "band": "Changes Needed Soon (Scores 5–6)",
+                "interpretation": "Investigation and changes needed soon",
+                "css": "risk-high",
+            },
+            {
+                "range": "7",
+                "range_key": "7",
+                "band": "Immediate Review (Score 7)",
+                "interpretation": "Investigation and changes needed immediately",
+                "css": "risk-very-high",
+            },
+        ]
+
+    for row in rows:
+        count = counts.get(row["range_key"]) if counts else None
+
+        if count is None:
+            row["frames"] = "Not available"
+        elif total_frames and total_frames > 0:
+            percent = round((count / total_frames) * 100)
+            row["frames"] = f"{percent}% ({count})"
+        else:
+            row["frames"] = f"({count})"
+
+    return rows
+
+
+def _render_method_note(metadata: dict) -> str:
+    method_type = _method_type(metadata.get("assessment_method", ""))
+
+    if method_type == "REBA":
+        text = (
+            "REBA, or Rapid Entire Body Assessment, is a screening tool used to assess postural exposure "
+            "across the neck, trunk, legs, upper arms, lower arms, wrists, force/load, coupling, and activity. "
+            "The score helps identify whether further ergonomic investigation or task changes may be needed. "
+            "REBA is not an injury prediction tool. It should be interpreted together with the video context, "
+            "task frequency, duration, force, workstation layout, and worker feedback."
+        )
+    elif method_type == "RULA":
+        text = (
+            "RULA, or Rapid Upper Limb Assessment, is a screening tool used to assess postural exposure in "
+            "the neck, trunk, upper arms, lower arms, wrists, muscle use, force/load, and activity. "
+            "The score helps identify whether further ergonomic investigation or task changes may be needed. "
+            "RULA is not an injury prediction tool. It should be interpreted together with the video context, "
+            "task frequency, duration, force, workstation layout, and worker feedback."
+        )
+    else:
+        text = (
+            "REBA and RULA are ergonomic screening tools used to assess postural exposure and identify whether "
+            "further ergonomic investigation or task changes may be needed. These tools are not injury prediction "
+            "tools. They should be interpreted together with the video context, task frequency, duration, force, "
+            "workstation layout, and worker feedback."
+        )
+
+    return f"""
+<section class="method-note">
+  <h2>How to read this report</h2>
+  <p>{escape(text)}</p>
+</section>
+"""
+
+
+def _render_summary_interpretation(report_data: dict, metadata: dict, summary: dict) -> str:
+    method_type = summary["method_type"]
+    average_score = summary["average_score"]
+    overall_risk = summary["overall_risk"]
+
+    score_summary = report_data.get("score_summary")
+    existing_text = ""
+
+    if isinstance(score_summary, dict):
+        existing_text = _clean_text(score_summary.get("interpretation") or score_summary.get("Interpretation") or "")
+
+    if existing_text:
+        existing_text = existing_text.replace("{{SITE_NAME}}", metadata.get("site_location", "the reviewed task"))
+        existing_text = existing_text.replace("{SITE_NAME}", metadata.get("site_location", "the reviewed task"))
+
+        if method_type == "REBA" and average_score is not None and 4 <= average_score <= 7:
+            existing_text = re.sub(
+                r"\bmedium\s*[-–—]\s*high\b",
+                "medium",
+                existing_text,
+                flags=re.IGNORECASE,
+            )
+            existing_text = re.sub(
+                r"\bhigh risk\b",
+                "medium risk",
+                existing_text,
+                flags=re.IGNORECASE,
+            )
+
+        return f"""
+<h3>Interpretation</h3>
+{_p(existing_text)}
+"""
+
+    if average_score is None:
+        text = (
+            "The available scoring data does not include a clear average score. The findings should be interpreted "
+            "using the observed task context, visible postures, movement patterns, task frequency, and worker feedback."
+        )
+    elif method_type == "REBA":
+        text = (
+            f"The average REBA score is {_format_number(average_score)}, which corresponds to {overall_risk.lower()}. "
+            "This indicates that the task should be reviewed for practical ergonomic improvements, especially where "
+            "repeated postures, reach distance, trunk position, neck position, or forceful handling are present. "
+            "REBA should be treated as a screening result rather than a prediction of injury."
+        )
+    elif method_type == "RULA":
+        text = (
+            f"The average RULA score is {_format_number(average_score)}, which indicates: {overall_risk}. "
+            "This result should be used to guide further review of upper-limb posture, wrist position, neck/trunk posture, "
+            "repetition, force, and workstation setup. RULA should be treated as a screening result rather than a prediction of injury."
+        )
+    else:
+        text = (
+            "The scoring results should be interpreted as screening findings that help identify where additional ergonomic "
+            "review or task design improvements may be useful. They should be considered alongside video context, task "
+            "frequency, duration, force, workstation layout, and worker feedback."
+        )
+
+    return f"""
+<h3>Interpretation</h3>
+<p>{escape(text)}</p>
+"""
+
+
+def _render_structured_summary(report_data: dict, metadata: dict) -> str:
+    summary = _get_score_summary_data(report_data, metadata)
+    method_type = summary["method_type"]
+    total_frames = summary["total_frames"]
+    average_score = summary["average_score"]
+    overall_risk = summary["overall_risk"]
+    extracted_scores = summary.get("extracted_scores", [])
+
+    rows = _distribution_rows(report_data, method_type, total_frames, extracted_scores)
+
+    table_html = f"""
+<table class="summary-table">
+  <tbody>
+    <tr>
+      <th>Total Frames Analyzed</th>
+      <td>{escape(_format_number(total_frames))}</td>
+    </tr>
+    <tr>
+      <th>{escape(_score_label(method_type))}</th>
+      <td>{escape(_format_number(average_score))}</td>
+    </tr>
+    <tr>
+      <th>Overall Risk Level</th>
+      <td><strong>{escape(overall_risk)}</strong></td>
+    </tr>
+  </tbody>
+</table>
+"""
+
+    distribution_html = """
+<h3>Score Distribution</h3>
+<table class="distribution-table">
+  <thead>
+    <tr>
+      <th>Score Range</th>
+      <th>Risk Band</th>
+      <th>Frames (%)</th>
+      <th>Interpretation</th>
+    </tr>
+  </thead>
+  <tbody>
+"""
+
+    for row in rows:
+        distribution_html += f"""
+    <tr class="{row["css"]}">
+      <td>{escape(row["range"])}</td>
+      <td>{escape(row["band"])}</td>
+      <td>{escape(row["frames"])}</td>
+      <td>{escape(row["interpretation"])}</td>
+    </tr>
+"""
+
+    distribution_html += """
+  </tbody>
+</table>
+"""
+
+    explanation = _render_summary_interpretation(report_data, metadata, summary)
+
+    return table_html + distribution_html + explanation
+
+
 def _render_heading_body_items(items) -> str:
     html = ""
 
@@ -248,16 +788,8 @@ def _render_heading_body_items(items) -> str:
             if key_lower in {"heading", "module", "title"}:
                 html += f"<h3>{escape(_clean_text(value))}</h3>\n"
             elif key_lower in {
-                "body",
-                "content",
-                "details",
-                "explanation",
-                "description",
-                "recommendation",
-                "reason",
-                "rationale",
-                "paragraph",
-                "paragraphs",
+                "body", "content", "details", "explanation", "description",
+                "recommendation", "reason", "rationale", "paragraph", "paragraphs",
             }:
                 html += _p(value)
             else:
@@ -265,140 +797,6 @@ def _render_heading_body_items(items) -> str:
                 html += f"<h3>{escape(_clean_text(key))}</h3>\n"
                 html += _p(value)
                 html += "\n</div>\n"
-
-    return html
-
-
-def _render_summary(report_data: dict) -> str:
-    score_summary = (
-        report_data.get("score_summary")
-        or report_data.get("summary_of_results")
-        or report_data.get("summary_of_assessment_results")
-        or report_data.get("assessment_results_summary")
-        or report_data.get("assessment_summary")
-        or report_data.get("results_summary")
-        or report_data.get("section_2")
-        or report_data.get("Section 2")
-        or report_data.get("summary")
-        or {}
-    )
-
-    if isinstance(score_summary, list):
-        rendered = _render_heading_body_items(score_summary)
-        if rendered.strip():
-            return rendered
-
-    if isinstance(score_summary, str):
-        rendered = _p(score_summary)
-        if rendered.strip():
-            return rendered
-
-    if isinstance(score_summary, dict) and (
-        "heading" in score_summary
-        or "Heading" in score_summary
-        or "content" in score_summary
-        or "Content" in score_summary
-        or "paragraphs" in score_summary
-        or "Paragraphs" in score_summary
-    ):
-        rendered = _render_heading_body_items([score_summary])
-        if rendered.strip():
-            return rendered
-
-    html = ""
-
-    if isinstance(score_summary, dict):
-        summary_text = (
-            score_summary.get("Score Summary")
-            or score_summary.get("score_summary")
-            or score_summary.get("Summary")
-            or score_summary.get("summary")
-            or score_summary.get("content")
-            or score_summary.get("Content")
-            or ""
-        )
-
-        interpretation = (
-            score_summary.get("Interpretation")
-            or score_summary.get("interpretation")
-            or ""
-        )
-
-        html += _p(summary_text)
-        html += _p(interpretation)
-
-        score_distribution = (
-            score_summary.get("Score Distribution")
-            or score_summary.get("score_distribution")
-            or score_summary.get("distribution")
-            or score_summary.get("Distribution")
-            or []
-        )
-
-        if score_distribution:
-            html += "<h3>Score Distribution</h3>\n"
-            html += _ul(score_distribution)
-
-        main_exposures = (
-            score_summary.get("Main Postural Exposures")
-            or score_summary.get("main_postural_exposures")
-            or score_summary.get("Main Exposures")
-            or score_summary.get("key_exposures")
-            or score_summary.get("Key Exposures")
-            or []
-        )
-
-        if main_exposures:
-            html += "<h3>Main Postural Exposures</h3>\n"
-            html += _ul(main_exposures)
-
-    if html.strip():
-        return html
-
-    assessment_method = (
-        report_data.get("cover_details", {}).get("Assessment method")
-        or "the selected ergonomic assessment method"
-    )
-
-    video_duration = (
-        report_data.get("cover_details", {}).get("Video duration")
-        or "the reviewed video segment"
-    )
-
-    risk_items = report_data.get("risk_exposure_analysis", [])
-    risk_headings = []
-
-    for item in risk_items:
-        if isinstance(item, dict):
-            heading = _get_heading_value(item)
-
-            if not heading and len(item) == 1:
-                heading = next(iter(item.keys()))
-
-            if heading:
-                risk_headings.append(_clean_text(heading))
-
-    fallback_paragraph = (
-        f"The assessment used {assessment_method} to review the observed task over {video_duration}. "
-        "The results indicate a moderate ergonomic risk profile, with the main exposures concentrated "
-        "in the upper limbs rather than the trunk or lower back. The pattern of findings suggests that "
-        "risk is being driven by repeated non-neutral postures, task layout, and the position of objects "
-        "or tools relative to the worker."
-    )
-
-    fallback_interpretation = (
-        "The findings should be interpreted as a practical indication of where task design improvements "
-        "may reduce cumulative strain. While no single observation should be treated as a complete ergonomic "
-        "diagnosis, the repeated exposure themes provide a useful basis for targeted recommendations and "
-        "follow-up review."
-    )
-
-    html = _p(fallback_paragraph)
-    html += _p(fallback_interpretation)
-
-    if risk_headings:
-        html += "<h3>Key Exposure Themes</h3>\n"
-        html += _ul(risk_headings[:6])
 
     return html
 
@@ -433,10 +831,6 @@ def validate_report_data(report_data: dict) -> None:
     assessment_overview = _clean_text(report_data.get("assessment_overview"))
     if not assessment_overview:
         errors.append("Section 1 assessment_overview is empty.")
-
-    summary_html = _render_summary(report_data)
-    if not summary_html.strip():
-        errors.append("Section 2 score summary is empty.")
 
     errors.extend(
         _validate_heading_body_list(
@@ -480,32 +874,6 @@ def validate_report_data(report_data: dict) -> None:
         raise ValueError(message)
 
 
-
-def _clean_display_value(value, fallback="Not specified"):
-    """
-    Clean weak metadata values before displaying them in the report.
-    """
-    if value is None:
-        return fallback
-
-    cleaned = str(value).strip()
-
-    bad_values = {
-        "",
-        "unknown",
-        "none",
-        "n/a",
-        "na",
-        "not specified",
-        "confidential",
-    }
-
-    if cleaned.lower() in bad_values:
-        return fallback
-
-    return cleaned
-
-
 def build_html_report(report_data: dict, output_path: str | Path) -> Path:
     validate_report_data(report_data)
 
@@ -527,11 +895,12 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
     )
 
     assessment_overview = _p(report_data.get("assessment_overview", ""))
-    summary_body = _render_summary(report_data)
+    summary_body = _render_structured_summary(report_data, metadata)
     risk_body = _render_heading_body_items(report_data.get("risk_exposure_analysis", []))
     observations_body = _p(report_data.get("overall_observations", ""))
     recommendations_body = _render_heading_body_items(report_data.get("recommendations", []))
     training_body = _render_heading_body_items(report_data.get("training_videos", []))
+    method_note = _render_method_note(metadata)
 
     html = f"""<!doctype html>
 <html>
@@ -567,7 +936,7 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
       align-items: center;
       border-bottom: 4px solid var(--vergo-blue);
       padding-bottom: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 0;
     }}
 
     .brand {{
@@ -607,8 +976,17 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
       line-height: 1.35;
     }}
 
+    .report-subtitle {{
+      margin: 12px 0 16px 0;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: var(--muted);
+      font-style: italic;
+      max-width: 760px;
+    }}
+
     .cover {{
-      margin-bottom: 24px;
+      margin-bottom: 22px;
       padding: 18px 20px;
       border: 1px solid var(--border);
       border-left: 6px solid var(--vergo-blue);
@@ -628,6 +1006,30 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
       color: var(--vergo-blue-dark);
     }}
 
+    .method-note {{
+      margin-bottom: 22px;
+      padding: 14px 16px;
+      border: 1px solid #d8e2ec;
+      border-left: 5px solid var(--vergo-blue);
+      background: #f8fbfd;
+      border-radius: 8px;
+    }}
+
+    .method-note h2 {{
+      margin-top: 0;
+      font-size: 13.5pt;
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 7px;
+      color: var(--vergo-blue);
+    }}
+
+    .method-note p {{
+      margin-bottom: 0;
+      color: #374151;
+      font-size: 10.2pt;
+    }}
+
     h2 {{
       color: var(--vergo-blue);
       font-size: 15.5pt;
@@ -641,10 +1043,10 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
 
     h3 {{
       font-size: 12.2pt;
-      margin-top: 14px;
-      margin-bottom: 5px;
+      margin-top: 20px;
+      margin-bottom: 7px;
       font-weight: 800;
-      color: #111827;
+      color: #1f70b8;
       page-break-after: avoid;
       break-after: avoid;
     }}
@@ -662,6 +1064,53 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
 
     li {{
       margin-bottom: 5px;
+    }}
+
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 20px 0;
+      font-size: 10.4pt;
+    }}
+
+    th, td {{
+      border: 1px solid #b8c2cc;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }}
+
+    .summary-table th {{
+      width: 34%;
+      background: #d6eaf5;
+      color: #1f70b8;
+      font-weight: 800;
+    }}
+
+    .summary-table td {{
+      background: #ffffff;
+    }}
+
+    .distribution-table thead th {{
+      background: #2f78b7;
+      color: #ffffff;
+      font-weight: 800;
+    }}
+
+    .risk-low td {{
+      background: #d9ead3;
+    }}
+
+    .risk-medium td {{
+      background: #fff0b3;
+    }}
+
+    .risk-high td {{
+      background: #f9d5bd;
+    }}
+
+    .risk-very-high td {{
+      background: #efb8b8;
     }}
 
     .report-section {{
@@ -694,12 +1143,10 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
         margin: 0;
       }}
 
-      .topbar {{
-        page-break-inside: avoid;
-        break-inside: avoid;
-      }}
-
-      .cover {{
+      .topbar,
+      .report-subtitle,
+      .cover,
+      .method-note {{
         page-break-inside: avoid;
         break-inside: avoid;
       }}
@@ -709,25 +1156,7 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
         break-inside: avoid;
       }}
     }}
-  
-.interpretation-box {{
-  margin: 18px 0 22px 0;
-  padding: 16px 18px;
-  border-left: 5px solid #78c257;
-  background: #f5faf3;
-  border-radius: 8px;
-}}
-.interpretation-box h3 {{
-  margin: 0 0 8px 0;
-  color: #1f3b1d;
-  font-size: 16px;
-}}
-.interpretation-box p {{
-  margin: 0;
-  color: #2f3a2f;
-  line-height: 1.45;
-}}
-</style>
+  </style>
 </head>
 
 <body>
@@ -741,6 +1170,10 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
     </div>
   </header>
 
+  <p class="report-subtitle">
+    Assessment of task-specific movement patterns to identify ergonomic risks and support injury prevention strategies.
+  </p>
+
   <section class="cover">
     <div class="metadata">
       <div class="label">Task:</div><div>{escape(metadata.get("task_name", "Not specified"))}</div>
@@ -753,6 +1186,8 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
     </div>
   </section>
 
+  {method_note}
+
   {_section("Section 1 – Assessment Overview", assessment_overview)}
   {_section("Section 2 – Summary of Assessment Results", summary_body)}
   {_section("Section 3 – Task-Based Risk Exposure Analysis", risk_body)}
@@ -762,7 +1197,7 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
   {_section("Section 7 – Disclaimer", _p(DISCLAIMER_TEXT), css_class="disclaimer-section")}
 
   <div class="footer-note">
-    {escape(metadata.get("client_name", "Not specified"))} – {escape(metadata.get("task_name", "Not specified"))} | {escape(metadata.get("assessment_date", "Not specified"))}
+    {escape(metadata.get("client_name", "Not specified"))} – {escape(metadata.get("task_name", "Not specified"))} | www.vergo.ai
   </div>
 </body>
 </html>

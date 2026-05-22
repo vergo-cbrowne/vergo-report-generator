@@ -719,6 +719,12 @@ def main():
     print("Found report.json")
     print("Found snapshots")
 
+    print("Loading task notes if available...")
+    task_notes = assessment_loader.load_task_notes(
+        service,
+        args.assessment_folder_id,
+    )
+
     print("Generating report with OpenAI...")
     generated_report = report_generator.generate_report(
         args.prompt_path,
@@ -726,6 +732,7 @@ def main():
         snapshot_files,
         args.model,
         style_guide_path="prompts/vergo_writing_style_guide.md",
+        task_notes=task_notes,
     )
 
     report_for_rendering = _load_raw_parsed_response_if_better(generated_report)

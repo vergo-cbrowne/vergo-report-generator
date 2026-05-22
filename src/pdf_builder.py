@@ -24,10 +24,24 @@ def build_pdf_from_html(html_path: str | Path, pdf_path: str | Path) -> Path:
             path=str(pdf_path),
             format="Letter",
             print_background=True,
+            display_header_footer=True,
+            header_template="<div></div>",
+            footer_template="""
+                <div style="
+                    width: 100%;
+                    font-size: 8px;
+                    color: #5b6770;
+                    padding: 0 0.6in;
+                    text-align: right;
+                    font-family: Arial, Helvetica, sans-serif;
+                ">
+                    Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+                </div>
+            """,
             margin={
                 "top": "0.6in",
                 "right": "0.6in",
-                "bottom": "0.6in",
+                "bottom": "0.75in",
                 "left": "0.6in",
             },
         )
@@ -36,4 +50,3 @@ def build_pdf_from_html(html_path: str | Path, pdf_path: str | Path) -> Path:
 
     print(f"PDF report saved to: {pdf_path}")
     return pdf_path
-    

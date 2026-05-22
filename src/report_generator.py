@@ -37,9 +37,6 @@ def _snapshot_summary(snapshot_files: list[Any]) -> list[dict[str, Any]]:
 
 
 def _extract_response_text(response: Any) -> str:
-    """
-    Supports the current OpenAI Responses API object and a few common fallbacks.
-    """
     output_text = getattr(response, "output_text", None)
     if output_text:
         return output_text
@@ -99,7 +96,6 @@ def _parse_json_response(text: str) -> dict[str, Any]:
         match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
         if not match:
             raise ValueError("OpenAI response did not contain a JSON object.")
-
         parsed = json.loads(match.group(0))
 
     if not isinstance(parsed, dict):
@@ -117,10 +113,13 @@ def _clean_text(value: Any) -> str:
 
     if isinstance(value, dict):
         parts = []
-        for _, val in value.items():
-            cleaned = _clean_text(val)
-            if cleaned:
-                parts.append(cleaned)
+        for key, val in value.items():
+            cleaned_key = _clean_text(key)
+            cleaned_val = _clean_text(val)
+            if cleaned_key and cleaned_val:
+                parts.append(f"{cleaned_key}: {cleaned_val}")
+            elif cleaned_val:
+                parts.append(cleaned_val)
         return "\n\n".join(parts)
 
     return str(value).strip()
@@ -136,10 +135,6 @@ def _first_value(item: dict[str, Any], keys: list[str]) -> str:
 
 
 def _ensure_heading_content_items(items: Any, section_name: str) -> list[dict[str, str]]:
-    """
-    Normalizes only the shape needed by the HTML builder.
-    It does NOT strip or discard content.
-    """
     if not isinstance(items, list):
         return []
 
@@ -214,11 +209,377 @@ def _ensure_heading_content_items(items: Any, section_name: str) -> list[dict[st
     return normalized
 
 
+def _normalise_key(key: str) -> str:
+    return str(key).lower().replace(" ", "_").replace("/", "_").replace("-", "_").strip()
+
+
+def _find_value_recursive(data: Any, possible_keys: list[str]) -> Any:
+    wanted = {_normalise_key(key) for key in possible_keys}
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if _normalise_key(key) in wanted:
+                    return item
+
+            for item in value.values():
+                found = walk(item)
+                if found not in ("", None):
+                    return found
+
+        elif isinstance(value, list):
+            for item in value:
+                found = walk(item)
+                if found not in ("", None):
+                    return found
+
+        return ""
+
+    return walk(data)
+
+
+def _to_float(value) -> float | None:
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = _clean_text(value)
+    match = re.search(r"\d+(?:\.\d+)?", text)
+    if not match:
+        return None
+
+    try:
+        return float(match.group(0))
+    except ValueError:
+        return None
+
+
+def _to_int(value) -> int | None:
+    number = _to_float(value)
+    if number is None:
+        return None
+    return int(round(number))
+
+
+def _method_type_from_report(report: dict[str, Any]) -> str:
+    method_text = _clean_text(
+        _find_value_recursive(
+            report,
+            [
+                "assessment_method",
+                "Assessment method",
+                "Assessment Method",
+                "method",
+                "Method",
+            ],
+        )
+    )
+
+    method_lower = method_text.lower()
+
+    if "reba" in method_lower:
+        return "REBA"
+
+    if "rula" in method_lower:
+        return "RULA"
+
+    all_text = _clean_text(report).lower()
+
+    if "reba" in all_text:
+        return "REBA"
+
+    if "rula" in all_text:
+        return "RULA"
+
+    return "REBA/RULA"
+
+
+def _scores_from_report_json(report_data: dict[str, Any]) -> list[float]:
+    scores = []
+
+    score_key_terms = [
+        "reba_score",
+        "rula_score",
+        "final_reba",
+        "final_rula",
+        "final_score",
+        "overall_score",
+        "risk_score",
+    ]
+
+    excluded_key_terms = [
+        "average",
+        "mean",
+        "median",
+        "min",
+        "max",
+        "summary",
+        "distribution",
+        "risk_level",
+        "risk_band",
+    ]
+
+    def looks_like_frame_score_key(key: str) -> bool:
+        norm = _normalise_key(key)
+        if any(term in norm for term in excluded_key_terms):
+            return False
+        return any(term in norm for term in score_key_terms)
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if looks_like_frame_score_key(key):
+                    number = _to_float(item)
+                    if number is not None and 0 <= number <= 15:
+                        scores.append(number)
+                walk(item)
+
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(report_data)
+
+    return [score for score in scores if score is not None]
+
+
+def _risk_level_from_average(method_type: str, average_score: float | None) -> str:
+    if average_score is None:
+        return "Not available"
+
+    if method_type == "REBA":
+        if average_score <= 3:
+            return "Low"
+        if average_score <= 7:
+            if average_score >= 6.5:
+                return "Medium, near the upper end of the Medium band"
+            return "Medium"
+        if average_score <= 10:
+            return "High"
+        return "Very High"
+
+    if method_type == "RULA":
+        if average_score <= 2:
+            return "Acceptable if not maintained or repeated for long periods"
+        if average_score <= 4:
+            return "Further investigation; changes may be needed"
+        if average_score <= 6:
+            return "Investigation and changes needed soon"
+        return "Investigation and changes needed immediately"
+
+    return "Interpret with selected screening method"
+
+
+def _count_scores_by_band(scores: list[float], method_type: str) -> list[dict[str, Any]]:
+    if method_type == "REBA":
+        band_defs = [
+            ("1–3", "Low", "Low risk; may need attention", lambda score: 1 <= score <= 3),
+            ("4–7", "Medium", "Further investigation and changes recommended", lambda score: 4 <= score <= 7),
+            ("8–10", "High", "Investigation and implement changes soon", lambda score: 8 <= score <= 10),
+            ("11–15", "Very High", "Implement changes immediately", lambda score: 11 <= score <= 15),
+        ]
+    else:
+        band_defs = [
+            ("1–2", "Acceptable", "Acceptable if not maintained or repeated for long periods", lambda score: 1 <= score <= 2),
+            ("3–4", "Further Investigation", "Further investigation; changes may be needed", lambda score: 3 <= score <= 4),
+            ("5–6", "Changes Needed Soon", "Investigation and changes needed soon", lambda score: 5 <= score <= 6),
+            ("7", "Immediate Review", "Investigation and changes needed immediately", lambda score: score >= 7),
+        ]
+
+    total = len(scores)
+    rows = []
+
+    for score_range, band, interpretation, rule in band_defs:
+        count = sum(1 for score in scores if rule(score))
+        percent = round((count / total) * 100) if total else None
+
+        rows.append(
+            {
+                "score_range": score_range,
+                "risk_band": band,
+                "frames_count": count if total else None,
+                "frames_percent": percent,
+                "frames_display": f"{percent}% ({count})" if total else "Not available",
+                "interpretation": interpretation,
+            }
+        )
+
+    return rows
+
+
+def _build_best_effort_score_summary(report_data: dict[str, Any]) -> dict[str, Any]:
+    method_type = _method_type_from_report(report_data)
+    scores = _scores_from_report_json(report_data)
+
+    total_frames = _to_int(
+        _find_value_recursive(
+            report_data,
+            [
+                "total_frames_analyzed",
+                "total_frames",
+                "frames_analyzed",
+                "frame_count",
+                "number_of_frames",
+                "total_observations",
+                "observations",
+            ],
+        )
+    )
+
+    average_score = _to_float(
+        _find_value_recursive(
+            report_data,
+            [
+                "average_reba_score",
+                "average_rula_score",
+                "average_score",
+                "mean_reba_score",
+                "mean_rula_score",
+                "mean_score",
+            ],
+        )
+    )
+
+    if average_score is None and scores:
+        average_score = sum(scores) / len(scores)
+
+    if total_frames is None and scores:
+        total_frames = len(scores)
+
+    risk_level = _risk_level_from_average(method_type, average_score)
+    distribution = _count_scores_by_band(scores, method_type) if scores else []
+
+    return {
+        "assessment_method_type": method_type,
+        "total_frames_analyzed": total_frames,
+        "average_score": round(average_score, 1) if average_score is not None else None,
+        "overall_risk_level": risk_level,
+        "score_distribution": distribution,
+        "interpretation": "",
+    }
+
+
+def _normalize_score_summary(report: dict[str, Any]) -> dict[str, Any]:
+    score_summary = report.get("score_summary")
+
+    if not isinstance(score_summary, dict):
+        score_summary = {}
+
+    method_type = _clean_text(
+        score_summary.get("assessment_method_type")
+        or score_summary.get("method_type")
+        or score_summary.get("score_type")
+        or ""
+    )
+
+    if method_type.upper() not in {"REBA", "RULA"}:
+        method_type = _method_type_from_report(report)
+
+    total_frames = _to_int(
+        score_summary.get("total_frames_analyzed")
+        or score_summary.get("total_frames")
+        or score_summary.get("frames_analyzed")
+    )
+
+    average_score = _to_float(
+        score_summary.get("average_score")
+        or score_summary.get("average_reba_score")
+        or score_summary.get("average_rula_score")
+    )
+
+    if average_score is not None:
+        average_score = round(average_score, 1)
+
+    overall_risk_level = _clean_text(
+        score_summary.get("overall_risk_level")
+        or score_summary.get("risk_level")
+        or ""
+    )
+
+    if not overall_risk_level or overall_risk_level.lower() in {"not available", "unknown", "none"}:
+        overall_risk_level = _risk_level_from_average(method_type, average_score)
+
+    if method_type == "REBA" and average_score is not None and 4 <= average_score <= 7:
+        overall_risk_level = _risk_level_from_average(method_type, average_score)
+
+    score_distribution = score_summary.get("score_distribution") or score_summary.get("distribution") or []
+
+    if not isinstance(score_distribution, list):
+        score_distribution = []
+
+    normalized_distribution = []
+
+    for row in score_distribution:
+        if not isinstance(row, dict):
+            continue
+
+        score_range = _clean_text(row.get("score_range") or row.get("range") or row.get("Score Range"))
+        risk_band = _clean_text(row.get("risk_band") or row.get("band") or row.get("Band") or row.get("Risk Band"))
+        interpretation = _clean_text(row.get("interpretation") or row.get("Interpretation"))
+        frames_count = _to_int(row.get("frames_count") or row.get("count") or row.get("frames"))
+        frames_percent = _to_int(row.get("frames_percent") or row.get("percent") or row.get("percentage"))
+
+        if not score_range:
+            continue
+
+        frames_display = _clean_text(row.get("frames_display") or row.get("frames_percent_display") or "")
+
+        if not frames_display:
+            if frames_count is not None and total_frames:
+                frames_percent = round((frames_count / total_frames) * 100)
+                frames_display = f"{frames_percent}% ({frames_count})"
+            elif frames_count is not None:
+                frames_display = f"({frames_count})"
+            else:
+                frames_display = "Not available"
+
+        normalized_distribution.append(
+            {
+                "score_range": score_range,
+                "risk_band": risk_band,
+                "frames_count": frames_count,
+                "frames_percent": frames_percent,
+                "frames_display": frames_display,
+                "interpretation": interpretation,
+            }
+        )
+
+    if not normalized_distribution:
+        best_effort = _build_best_effort_score_summary(report)
+        normalized_distribution = best_effort.get("score_distribution", [])
+
+        if total_frames is None:
+            total_frames = best_effort.get("total_frames_analyzed")
+
+        if average_score is None:
+            average_score = best_effort.get("average_score")
+
+        if not overall_risk_level or overall_risk_level == "Not available":
+            overall_risk_level = best_effort.get("overall_risk_level", "Not available")
+
+    interpretation = _clean_text(
+        score_summary.get("interpretation")
+        or score_summary.get("Interpretation")
+        or score_summary.get("content")
+        or score_summary.get("Content")
+        or ""
+    )
+
+    report["score_summary"] = {
+        "assessment_method_type": method_type,
+        "total_frames_analyzed": total_frames,
+        "average_score": average_score,
+        "overall_risk_level": overall_risk_level,
+        "score_distribution": normalized_distribution,
+        "interpretation": interpretation,
+    }
+
+    return report
+
+
 def _normalize_report(parsed: dict[str, Any]) -> dict[str, Any]:
-    """
-    Preserve the OpenAI JSON structure while ensuring key section names exist.
-    This replaces the earlier normalization that was stripping Section 3/5 body text.
-    """
     report = dict(parsed)
 
     report.setdefault("cover_details", {})
@@ -226,6 +587,8 @@ def _normalize_report(parsed: dict[str, Any]) -> dict[str, Any]:
     report.setdefault("score_summary", {})
     report.setdefault("overall_observations", [])
     report.setdefault("training_videos", [])
+
+    report = _normalize_score_summary(report)
 
     report["risk_exposure_analysis"] = _ensure_heading_content_items(
         report.get("risk_exposure_analysis", []),
@@ -259,6 +622,18 @@ def _debug_section_counts(report: dict[str, Any]) -> None:
         f"overall_observations={len(overall_observations) if isinstance(overall_observations, list) else 'not-list'}, "
         f"recommendations={len(recommendations) if isinstance(recommendations, list) else 'not-list'}, "
         f"training_videos={len(training_videos) if isinstance(training_videos, list) else 'not-list'}"
+    )
+
+
+def _debug_score_summary(report: dict[str, Any]) -> None:
+    score_summary = report.get("score_summary", {}) or {}
+    print(
+        "DEBUG: structured score summary: "
+        f"method={score_summary.get('assessment_method_type')}, "
+        f"total_frames={score_summary.get('total_frames_analyzed')}, "
+        f"average_score={score_summary.get('average_score')}, "
+        f"risk={score_summary.get('overall_risk_level')}, "
+        f"distribution_rows={len(score_summary.get('score_distribution') or [])}"
     )
 
 
@@ -308,12 +683,43 @@ def _debug_content_presence(report: dict[str, Any]) -> None:
     )
 
 
+def _format_task_notes_for_prompt(task_notes: dict[str, Any] | None) -> str:
+    if not isinstance(task_notes, dict):
+        return "No task notes were provided."
+
+    combined_text = _clean_text(task_notes.get("combined_text"))
+
+    if not combined_text:
+        return "No task notes were provided."
+
+    files = task_notes.get("files") or []
+    file_names = []
+
+    if isinstance(files, list):
+        for item in files:
+            if isinstance(item, dict) and item.get("name"):
+                file_names.append(str(item["name"]))
+
+    file_list = ", ".join(file_names) if file_names else "Task notes file(s)"
+
+    return f"""
+Task notes were found and should be used as contextual evidence.
+
+Loaded note files:
+{file_list}
+
+Task note content:
+{combined_text}
+""".strip()
+
+
 def generate_report(
     prompt_path: str | Path,
     report_data: dict[str, Any],
     snapshot_files: list[Any],
     model: str,
     style_guide_path: str | Path | None = None,
+    task_notes: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     print("Generating report with OpenAI...")
 
@@ -325,6 +731,14 @@ def generate_report(
     style_guide = _read_text_file(style_guide_path) if style_guide_path else ""
 
     snapshot_summary = _snapshot_summary(snapshot_files)
+    task_notes_context = _format_task_notes_for_prompt(task_notes)
+
+    if task_notes_context != "No task notes were provided.":
+        print("Task notes: Passing task notes context to OpenAI.")
+    else:
+        print("Task notes: No task notes context passed to OpenAI.")
+
+    best_effort_score_summary = _build_best_effort_score_summary(report_data)
 
     user_input = f"""
 Generate a Vergo Movement Analysis Risk Report using the required JSON schema.
@@ -338,9 +752,71 @@ ASSESSMENT REPORT.JSON DATA:
 SNAPSHOT FILE SUMMARY:
 {_safe_json_dumps(snapshot_summary)}
 
+BEST-EFFORT STRUCTURED SCORING DATA EXTRACTED FROM REPORT.JSON:
+{_safe_json_dumps(best_effort_score_summary)}
+
+TASK NOTES / CLIENT CONTEXT:
+{task_notes_context}
+
+MANDATORY SECTION 2 SCORING STRUCTURE:
+You must return score_summary as a JSON object with this exact structure:
+
+"score_summary": {{
+  "assessment_method_type": "REBA or RULA",
+  "total_frames_analyzed": number or null,
+  "average_score": number or null,
+  "overall_risk_level": "risk/action level text",
+  "score_distribution": [
+    {{
+      "score_range": "1–3",
+      "risk_band": "Low",
+      "frames_count": number or null,
+      "frames_percent": number or null,
+      "frames_display": "example: 40% (2) or Not available",
+      "interpretation": "plain-language interpretation"
+    }}
+  ],
+  "interpretation": "one or two practical paragraphs explaining the result"
+}}
+
+SCORING INSTRUCTIONS:
+- Use the best-effort structured scoring data above when it is available.
+- If report.json contains per-frame REBA/RULA scores, calculate:
+  - total_frames_analyzed
+  - average_score
+  - score_distribution
+  - overall_risk_level
+- If exact scoring data is not available, use null for numeric fields and "Not available" for frames_display.
+- Do not invent numbers.
+- Do not use placeholders such as {{SITE_NAME}}.
+- For REBA:
+  - 1–3 = Low
+  - 4–7 = Medium
+  - 8–10 = High
+  - 11–15 = Very High
+- For RULA:
+  - 1–2 = Acceptable if not maintained or repeated for long periods
+  - 3–4 = Further investigation; changes may be needed
+  - 5–6 = Investigation and changes needed soon
+  - 7 = Investigation and changes needed immediately
+- Do not describe REBA 4–7 as High.
+- If average REBA is between 4 and 7, the overall risk level must be Medium.
+- If average REBA is near 7, say "Medium, near the upper end of the Medium band" rather than Medium–High.
+- Avoid alarmist wording.
+- REBA/RULA are screening tools, not injury prediction tools.
+
+TASK NOTES INSTRUCTIONS:
+- Use the task notes as contextual evidence to improve the report.
+- Do not render the raw notes directly into the report.
+- Do not invent facts beyond report.json, snapshots, and task notes.
+- If notes mention multiple people visible, poor camera angle, obstruction, or pose-estimation limitations, acknowledge those limitations in practical terms.
+- If notes mention a lift assist, hoist, cart, jig, or assistive device, do not imply it is ineffective solely because the REBA/RULA score remains medium or high.
+- Explain that assistive devices may reduce force/load exposure even when REBA/RULA remains elevated because scoring tools can still reflect posture, reach distance, trunk flexion, neck position, twisting, repetition, or working height.
+
 IMPORTANT:
 - Return valid JSON only.
 - Preserve all required fields.
+- For assessment_overview, return a paragraph or list of paragraphs.
 - For risk_exposure_analysis, every item must include heading and content.
 - For recommendations, every item must include heading and content.
 - For training_videos, every item must include module and content.
@@ -387,6 +863,7 @@ IMPORTANT:
     normalized_path.write_text(_safe_json_dumps(normalized), encoding="utf-8")
 
     _debug_section_counts(normalized)
+    _debug_score_summary(normalized)
     _debug_content_presence(normalized)
 
     return normalized
