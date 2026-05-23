@@ -531,24 +531,64 @@ def main():
                 "state": "running",
             }
 
-            status_box = st.empty()
-            progress_box = st.empty()
-            log_box = st.empty()
+            import time
 
-            with status_box.container():
-                st.info(f"Preparing to process {len(folders_to_run)} {run_label}...")
-                render_generation_progress("Preparing batch", 1, 4)
+            progress_card = st.container()
+            progress_bar = st.progress(0)
+            status_line = st.empty()
+            eta_line = st.empty()
 
-            with progress_box.container():
-                render_generation_progress("Writing folder queue", 2, 4)
+            all_summaries = []
+            all_logs = []
+            failed_count = 0
+            start_time = time.time()
 
-            with st.spinner(f"Generating {len(folders_to_run)} {run_label}..."):
-                returncode, output, summary_df = run_batch(folders_to_run, credentials_path, prompt_path, model, root_folder_id)
+            for index, folder_id in enumerate(folders_to_run, start=1):
+                elapsed = time.time() - start_time
+                avg_time = elapsed / max(index - 1, 1)
+                remaining = max(len(folders_to_run) - index + 1, 0)
+                eta_seconds = int(avg_time * remaining)
+
+                mins, secs = divmod(eta_seconds, 60)
+
+                status_line.markdown(
+                    f"""
+                    <div class="summary-card" style="max-width:720px;">
+                        <div class="summary-title">Generating report {index} of {len(folders_to_run)}</div>
+                        <div class="summary-copy">Processing folder ID: <code>{folder_id}</code></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                eta_line.caption(f"Estimated time remaining: {mins} min {secs} sec")
+
+                returncode, output, one_summary = run_batch(
+                    [folder_id],
+                    credentials_path,
+                    prompt_path,
+                    model,
+                    root_folder_id,
+                )
+
+                all_logs.append(f"--- Folder {index}: {folder_id} ---\n{returncode=}\n{output}")
+
+                if returncode != 0:
+                    failed_count += 1
+
+                if one_summary is not None and not one_summary.empty:
+                    all_summaries.append(one_summary)
+
+                progress_bar.progress(index / len(folders_to_run))
+
+            if all_summaries:
+                summary_df = pd.concat(all_summaries, ignore_index=True).fillna("")
+            else:
+                summary_df = pd.DataFrame()
 
             summary_df = clean_batch_summary(summary_df, assessment_date_required)
-
-            with progress_box.container():
-                render_generation_progress("Processing complete", 4, 4)
+            output = "\n\n".join(all_logs)
+            returncode = 0 if failed_count == 0 else 1
 
             st.session_state["last_generation_status"] = {
                 "mode": run_mode,
@@ -557,10 +597,13 @@ def main():
                 "state": "completed" if returncode == 0 else "completed_with_errors",
             }
 
+            elapsed_total = int(time.time() - start_time)
+            total_mins, total_secs = divmod(elapsed_total, 60)
+
             if returncode == 0:
-                st.success(f"Generation completed for {len(folders_to_run)} {run_label}.")
+                st.success(f"Generation completed for {len(folders_to_run)} {run_label} in {total_mins} min {total_secs} sec.")
             else:
-                st.error("Generation completed with one or more failures.")
+                st.error(f"Generation completed with {failed_count} failure(s) in {total_mins} min {total_secs} sec.")
 
             if not summary_df.empty:
                 st.subheader("Batch summary")
