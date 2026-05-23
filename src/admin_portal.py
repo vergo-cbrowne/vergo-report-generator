@@ -534,11 +534,7 @@ def main():
             import time
 
             progress_card = st.container()
-            progress_area = st.container()
-            with progress_area:
-                progress_bar = st.progress(0)
             status_line = st.empty()
-            eta_line = st.empty()
 
             all_summaries = []
             all_logs = []
@@ -556,14 +552,18 @@ def main():
                 status_line.markdown(
                     f"""
                     <div class="summary-card" style="max-width:720px;">
-                        <div class="summary-title">Generating report {index} of {len(folders_to_run)}</div>
-                        <div class="summary-copy">Processing folder ID: <code>{folder_id}</code></div>
+                        <div class="summary-title">Report generation status</div>
+                        <div class="summary-copy">
+                            <strong>Completed:</strong> {index - 1} of {len(folders_to_run)}<br>
+                            <strong>Current folder:</strong> <code>{folder_id}</code><br>
+                            <strong>Elapsed:</strong> {int(elapsed // 60)} min {int(elapsed % 60)} sec<br>
+                            <strong>Estimated remaining:</strong> {mins} min {secs} sec<br>
+                            <strong>Status:</strong> Running
+                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
-
-                eta_line.caption(f"Estimated time remaining: {mins} min {secs} sec")
 
                 returncode, output, one_summary = run_batch(
                     [folder_id],
@@ -590,7 +590,27 @@ def main():
                 if folder_failed:
                     failed_count += 1
 
-                progress_bar.progress(index / len(folders_to_run))
+                elapsed_after = time.time() - start_time
+                remaining_after = len(folders_to_run) - index
+                avg_after = elapsed_after / max(index, 1)
+                eta_after_seconds = int(avg_after * remaining_after)
+                eta_after_mins, eta_after_secs = divmod(eta_after_seconds, 60)
+
+                status_line.markdown(
+                    f"""
+                    <div class="summary-card" style="max-width:720px;">
+                        <div class="summary-title">Report generation status</div>
+                        <div class="summary-copy">
+                            <strong>Completed:</strong> {index} of {len(folders_to_run)}<br>
+                            <strong>Last completed folder:</strong> <code>{folder_id}</code><br>
+                            <strong>Elapsed:</strong> {int(elapsed_after // 60)} min {int(elapsed_after % 60)} sec<br>
+                            <strong>Estimated remaining:</strong> {eta_after_mins} min {eta_after_secs} sec<br>
+                            <strong>Status:</strong> Running
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
             if all_summaries:
                 summary_df = pd.concat(all_summaries, ignore_index=True).fillna("")
