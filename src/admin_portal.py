@@ -24,7 +24,12 @@ SCAN_CSV = "output/drive_scan.csv"
 BATCH_SUMMARY_CSV = "output/portal_batch_summary.csv"
 LOGO_PATH = "assets/vergo-logo-white-transparent.png"
 
-st.set_page_config(page_title="Vergo Report Admin", page_icon="✅", layout="wide")
+st.set_page_config(
+    page_title="Vergo Report Admin",
+    page_icon="✅",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 
 def image_to_base64(path: str) -> str:
@@ -101,6 +106,7 @@ def apply_vergo_theme():
         header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] {{ display:none !important; }}
         html, body, .stApp {{ background:var(--bg) !important; color:var(--text) !important; font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important; }}
         [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background:{app_gradient} !important; color:var(--text) !important; }}
+        [data-testid="collapsedControl"] { display: none !important; }
         .block-container {{ max-width:1280px !important; padding:2.25rem 3rem 4rem 3rem !important; }}
         section[data-testid="stSidebar"] {{ display:block !important; visibility:visible !important; background:{sidebar_gradient} !important; border-right:1px solid var(--border) !important; box-shadow:18px 0 50px rgba(0,0,0,.25); }}
         section[data-testid="stSidebar"] > div {{ padding:1.3rem 1rem 1.25rem 1rem !important; }}
@@ -118,7 +124,7 @@ def apply_vergo_theme():
         .sidebar-logo {{ width:120px; margin:.2rem 0 1.25rem 0; }}
         .sidebar-welcome {{ margin:0 0 1.1rem 0; }}
         .sidebar-welcome-label {{ color:var(--muted) !important; font-size:.94rem; margin-bottom:.25rem; }}
-        .sidebar-name {{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:1.62rem; font-weight:250; letter-spacing:-.055em; line-height:1.05; }}
+        .sidebar-name { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:1.62rem; font-weight:250; letter-spacing:-.055em; line-height:1.05; }}
         .sidebar-divider {{ height:1px; background:var(--border); margin:1.1rem 0; }}
         .sidebar-action-button {{ display:flex; align-items:center; gap:.85rem; width:100%; box-sizing:border-box; padding:.78rem 1rem; border-radius:10px; margin:.65rem 0; font-weight:750; border:1px solid var(--border); }}
         .scan-btn {{ background:linear-gradient(135deg,rgba(35,130,54,.95),rgba(22,100,46,.92)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(31,143,61,.18); }}
@@ -220,8 +226,7 @@ def render_sidebar_controls():
         <div class="sidebar-name">Vergo Admin</div>
     </div>
     """, unsafe_allow_html=True)
-    st.sidebar.markdown(f'<div class="sidebar-action-button scan-btn">{google_drive_svg()}<span>Scan Google Drive</span></div>', unsafe_allow_html=True)
-    scan_clicked = st.sidebar.button("Scan Google Drive", key="scan_drive_button", use_container_width=True)
+    scan_clicked = st.sidebar.button("▲  Scan Google Drive", key="scan_drive_button", type="primary", use_container_width=True)
     st.sidebar.markdown('<div class="sidebar-action-button csv-btn"><svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Load existing scan CSV</span></div>', unsafe_allow_html=True)
     load_existing_clicked = st.sidebar.button("Load existing scan CSV", key="load_csv_button", use_container_width=True)
 
@@ -242,16 +247,16 @@ def render_sidebar_controls():
     </div>
     ''', unsafe_allow_html=True)
 
-    st.sidebar.markdown('<div class="sidebar-theme-row"><span>☼ Light</span><span>Dark ☾</span></div>', unsafe_allow_html=True)
+    theme_left, theme_toggle, theme_right = st.sidebar.columns([1, 1, 1])
+    theme_left.markdown("☼ Light")
+    theme_right.markdown("Dark ☾")
     previous_mode = st.session_state.get("vergo_dark_mode", True)
-    new_mode = st.sidebar.toggle("Dark mode", value=previous_mode, key="dark_mode_bottom_toggle", label_visibility="collapsed")
+    new_mode = theme_toggle.toggle("Dark mode", value=previous_mode, key="dark_mode_bottom_toggle", label_visibility="collapsed")
     if new_mode != previous_mode:
         st.session_state.vergo_dark_mode = new_mode
         st.rerun()
     st.session_state.vergo_dark_mode = new_mode
-
-    st.sidebar.markdown(f'<div class="sidebar-signout-icon">{power_icon_svg()}</div>', unsafe_allow_html=True)
-    if st.sidebar.button("Sign out", key="real_logout_button", use_container_width=True):
+    if st.sidebar.button("⏻  Sign out", key="real_logout_button", use_container_width=True):
         st.session_state["vergo_admin_authenticated"] = False
         st.rerun()
     st.sidebar.markdown(f'<div class="sidebar-footer-year">© {datetime.now().year} Vergo. All rights reserved.</div>', unsafe_allow_html=True)
