@@ -165,6 +165,36 @@ def apply_vergo_theme():
         div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{ border-radius:14px; border:1px solid var(--border); overflow:hidden; }}
         @media (max-width:1100px) {{ .metric-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
         @media print {{ section[data-testid="stSidebar"], header, footer, .stButton, .stDownloadButton, div[role="tablist"] {{ display:none !important; }} [data-testid="stAppViewContainer"], [data-testid="stMain"], .block-container {{ background:#fff !important; color:#000 !important; max-width:100% !important; padding:0.45in !important; }} * {{ color:#000 !important; box-shadow:none !important; text-shadow:none !important; }} .metric-card,.summary-card,.action-bar,.table-shell {{ border:1px solid #bbb !important; background:#fff !important; }} }}
+        
+        <style id="VERGO_SIDEBAR_BOTTOM_CARD_FIX">
+        .sidebar-user-card {
+            margin-top: 1.2rem;
+            padding: 1rem;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.045);
+        }
+        .sidebar-user-title {
+            font-weight: 800;
+            margin-bottom: 0.2rem;
+        }
+        .sidebar-user-role {
+            color: rgba(255,255,255,0.62);
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+        .sidebar-status {
+            color: #58d34f;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .sidebar-footer-year {
+            margin-top: 1rem;
+            text-align: center;
+            color: rgba(255,255,255,0.58);
+            font-size: 0.82rem;
+        }
+        </style>
         </style>
         """,
         unsafe_allow_html=True,
@@ -247,12 +277,32 @@ def render_sidebar_controls():
     model = st.sidebar.text_input("OpenAI model", DEFAULT_MODEL)
     full_scan = st.sidebar.checkbox("Full Drive scan", value=False, help="Leave off for faster testing. Turn on when you want to scan everything.")
     assessment_date_required = st.sidebar.checkbox("Require assessment date", value=False, help="If off, missing assessment dates are not treated as a review warning.")
-    st.sidebar.markdown('<div class="sidebar-divider"></div><div class="theme-row"><span>Theme</span><span>☼ &nbsp;&nbsp; ◐ &nbsp;&nbsp; ☾</span></div>', unsafe_allow_html=True)
-    st.session_state.vergo_dark_mode = st.sidebar.toggle("Dark mode", value=st.session_state.get("vergo_dark_mode", True), key="dark_mode_bottom_toggle")
-    st.sidebar.markdown('<div class="logout-faux">↪ <span>Log Out</span></div>', unsafe_allow_html=True)
-    if st.sidebar.button("Log Out", key="real_logout_button", use_container_width=True):
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
+    st.sidebar.markdown(
+        '''
+        <div class="sidebar-user-card">
+            <div class="sidebar-user-title">Admin User</div>
+            <div class="sidebar-user-role">Administrator</div>
+            <div class="sidebar-status">● Online</div>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
+
+    st.session_state.vergo_dark_mode = st.sidebar.toggle(
+        "Dark mode",
+        value=st.session_state.get("vergo_dark_mode", True),
+        key="dark_mode_bottom_toggle",
+    )
+
+    if st.sidebar.button("↪  Sign out", key="real_logout_button", use_container_width=True):
         st.session_state["vergo_admin_authenticated"] = False
         st.rerun()
+
+    st.sidebar.markdown(
+        f'<div class="sidebar-footer-year">© {datetime.now().year} Vergo. All rights reserved.</div>',
+        unsafe_allow_html=True,
+    )
     return credentials_path, root_folder_id, prompt_path, model, full_scan, assessment_date_required, scan_clicked, load_existing_clicked
 
 
