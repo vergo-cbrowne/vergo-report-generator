@@ -193,6 +193,13 @@ def apply_vergo_theme():
             color: rgba(255,255,255,0.58);
             font-size: 0.82rem;
         }}
+        
+        input[type="password"] {
+            padding-right: 3.2rem !important;
+        }
+        div[data-testid="InputInstructions"] {
+            display: none !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -200,6 +207,9 @@ def apply_vergo_theme():
 
 
 def require_admin_login():
+    if st.session_state.get("vergo_admin_authenticated") is True:
+        return
+
     st.markdown("""
     <style id="VERGO_LOGIN_FIX">
     section[data-testid="stSidebar"] {
@@ -234,8 +244,6 @@ def require_admin_login():
     if not admin_user or not admin_password:
         st.error("Admin login is not configured. Set VERGO_ADMIN_USER and VERGO_ADMIN_PASSWORD in .env.")
         st.stop()
-    if st.session_state.get("vergo_admin_authenticated") is True:
-        return
     logo_b64 = image_to_base64(LOGO_PATH)
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="top-logo" />' if logo_b64 else ""
     st.markdown(f"""{logo_html}<div class="hero"><div class="eyebrow">Secure Access</div><div class="hero-title">Vergo Admin Login</div><div class="hero-subtitle">Sign in to access the report operations dashboard.</div></div>""", unsafe_allow_html=True)
@@ -258,6 +266,19 @@ def require_admin_login():
 
 
 def render_sidebar_controls():
+    st.markdown("""
+    <style id="VERGO_FORCE_SIDEBAR_VISIBLE">
+    section[data-testid="stSidebar"] {
+        display: block !important;
+        visibility: visible !important;
+    }
+    .block-container {
+        max-width: 1280px !important;
+        padding: 2.25rem 3rem 4rem 3rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     logo_b64 = image_to_base64(LOGO_PATH)
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="sidebar-logo" />' if logo_b64 else ""
     st.sidebar.markdown(f'{logo_html}<div class="sidebar-collapse">«</div><div class="sidebar-welcome"><div class="sidebar-welcome-label">Welcome back</div><div class="sidebar-name">Vergo Admin</div></div>', unsafe_allow_html=True)
