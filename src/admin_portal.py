@@ -132,7 +132,7 @@ def apply_vergo_theme():
         }}
         .block-container {{ max-width:1280px !important; padding:2.25rem 3rem 4rem 3rem !important; }}
         section[data-testid="stSidebar"] {{ display:block !important; visibility:visible !important; background:{sidebar_gradient} !important; border-right:1px solid var(--border) !important; box-shadow:18px 0 50px rgba(0,0,0,.25); }}
-        section[data-testid="stSidebar"] > div {{ padding:1.3rem 1rem 1.25rem 1rem !important; }}
+        section[data-testid="stSidebar"] > div {{ padding:.72rem .72rem .72rem .72rem !important; overflow-y:auto !important; }}
         section[data-testid="stSidebar"] * {{ color:var(--text) !important; }}
         .login-container {{ max-width:650px; margin:0 auto; padding-top:1rem; }}
         .login-logo {{ width:128px; margin-bottom:2rem; }}
@@ -144,25 +144,33 @@ def apply_vergo_theme():
         div[data-testid="stForm"] {{ border:1px solid var(--border) !important; border-radius:12px !important; padding:1.35rem !important; background:rgba(0,0,0,.18) !important; }}
         div[data-testid="stForm"] input {{ padding-right:3.2rem !important; }}
         div[data-testid="InputInstructions"] {{ display:none !important; }}
-        .sidebar-logo {{ width:120px; margin:.2rem 0 1.25rem 0; }}
-        .sidebar-welcome {{ margin:0 0 1.1rem 0; }}
-        .sidebar-welcome-label {{ color:var(--muted) !important; font-size:.94rem; margin-bottom:.25rem; }}
-        .sidebar-name {{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:1.62rem; font-weight:250; letter-spacing:-.055em; line-height:1.05; }}
-        .sidebar-divider {{ height:1px; background:var(--border); margin:1.1rem 0; }}
+        .sidebar-logo {{ width:94px; margin:0 0 .55rem 0; }}
+        .sidebar-welcome {{ margin:0 0 .7rem 0; }}
+        .sidebar-welcome-label {{ color:var(--muted) !important; font-size:.82rem; margin-bottom:.08rem; }}
+        .sidebar-name {{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:1.32rem; font-weight:250; letter-spacing:-.055em; line-height:1.02; }}
+        .sidebar-divider {{ height:1px; background:var(--border); margin:.72rem 0; }}
         .sidebar-action-button {{ display:flex; align-items:center; gap:.85rem; width:100%; box-sizing:border-box; padding:.78rem 1rem; border-radius:10px; margin:.65rem 0; font-weight:750; border:1px solid var(--border); }}
         .scan-btn {{ background:linear-gradient(135deg,rgba(35,130,54,.95),rgba(22,100,46,.92)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(31,143,61,.18); }}
         .csv-btn {{ background:rgba(24,34,48,.78); }}
         .gd-icon {{ width:26px; height:26px; flex:0 0 auto; }}
         .file-icon {{ width:24px; height:24px; flex:0 0 auto; color:#74d7ff; }}
-        .sidebar-user-card {{ margin-top:1.1rem; padding:.95rem; border:1px solid var(--border); border-radius:14px; background:rgba(255,255,255,.045); }}
-        .sidebar-user-title {{ font-weight:800; margin-bottom:.2rem; }}
+        .sidebar-user-card {{ margin-top:.55rem; padding:.62rem .72rem; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.045); }}
+        .sidebar-user-title {{ font-weight:800; font-size:.92rem; margin-bottom:.05rem; }}
         .sidebar-user-role {{ color:var(--muted) !important; font-size:.85rem; margin-bottom:.75rem; }}
-        .sidebar-status {{ color:var(--green) !important; font-size:.85rem; font-weight:700; }}
-        .sidebar-theme-row {{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:.85rem 0 .65rem 0; color:var(--muted) !important; }}
-        .sidebar-theme-row span {{ color:var(--muted) !important; font-size:.86rem; }}
+        .sidebar-status {{ color:var(--green) !important; font-size:.76rem; font-weight:700; }}
+        .sidebar-theme-row {{ display:flex; align-items:center; justify-content:space-between; gap:.4rem; margin:.52rem 0 .08rem 0; color:var(--muted) !important; }}
+        .sidebar-theme-row span {{ color:var(--muted) !important; font-size:.76rem; }}
         .sidebar-signout-icon {{ display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,.045); margin-top:.65rem; }}
         .power-icon {{ width:21px; height:21px; color:var(--text); }}
-        .sidebar-footer-year {{ margin-top:.9rem; text-align:center; color:var(--muted) !important; font-size:.82rem; }}
+        
+        .sidebar-footer-year {{ margin-top:.48rem; text-align:center; color:var(--muted) !important; font-size:.72rem; }}
+        section[data-testid="stSidebar"] h2 {{ font-size:1.18rem !important; margin:.1rem 0 .35rem 0 !important; }}
+        section[data-testid="stSidebar"] label {{ font-size:.78rem !important; margin-bottom:.12rem !important; }}
+        section[data-testid="stSidebar"] .stTextInput {{ margin-bottom:.35rem !important; }}
+        section[data-testid="stSidebar"] input {{ min-height:34px !important; padding:.33rem .55rem !important; font-size:.86rem !important; }}
+        section[data-testid="stSidebar"] .stCheckbox {{ margin-bottom:.12rem !important; }}
+        section[data-testid="stSidebar"] .stButton button {{ min-height:38px !important; padding:.35rem .7rem !important; font-size:.86rem !important; border-radius:10px !important; }}
+        
         .eyebrow {{ color:var(--green); font-size:.78rem; font-weight:850; letter-spacing:.18em; text-transform:uppercase; }}
         .hero {{ padding:.75rem 0 2.25rem 0; margin-bottom:2.1rem; border-bottom:1px solid var(--border); background:transparent !important; }}
         .hero-title {{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:clamp(3.1rem,5.2vw,5.25rem); line-height:1.02; font-weight:280; letter-spacing:-.067em; margin:1.15rem 0 1.2rem 0; color:var(--text); }}
@@ -250,8 +258,7 @@ def render_sidebar_controls():
     </div>
     """, unsafe_allow_html=True)
     scan_clicked = st.sidebar.button("▲  Scan Google Drive", key="scan_drive_button", type="primary", use_container_width=True)
-    st.sidebar.markdown('<div class="sidebar-action-button csv-btn"><svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Load existing scan CSV</span></div>', unsafe_allow_html=True)
-    load_existing_clicked = st.sidebar.button("Load existing scan CSV", key="load_csv_button", use_container_width=True)
+    load_existing_clicked = st.sidebar.button("▣  Load existing scan CSV", key="load_csv_button", use_container_width=True)
 
     st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     st.sidebar.header("Configuration")
