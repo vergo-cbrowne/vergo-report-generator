@@ -124,7 +124,7 @@ def apply_vergo_theme():
         .sidebar-logo {{ width:120px; margin:.2rem 0 1.25rem 0; }}
         .sidebar-welcome {{ margin:0 0 1.1rem 0; }}
         .sidebar-welcome-label {{ color:var(--muted) !important; font-size:.94rem; margin-bottom:.25rem; }}
-        .sidebar-name { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:1.62rem; font-weight:250; letter-spacing:-.055em; line-height:1.05; }}
+        .sidebar-name {{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:1.62rem; font-weight:250; letter-spacing:-.055em; line-height:1.05; }}
         .sidebar-divider {{ height:1px; background:var(--border); margin:1.1rem 0; }}
         .sidebar-action-button {{ display:flex; align-items:center; gap:.85rem; width:100%; box-sizing:border-box; padding:.78rem 1rem; border-radius:10px; margin:.65rem 0; font-weight:750; border:1px solid var(--border); }}
         .scan-btn {{ background:linear-gradient(135deg,rgba(35,130,54,.95),rgba(22,100,46,.92)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(31,143,61,.18); }}
