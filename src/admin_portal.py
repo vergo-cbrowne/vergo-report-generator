@@ -565,20 +565,128 @@ def main():
             if not summary_df.empty:
                 st.subheader("Batch summary")
                 total_rows = len(summary_df)
-                success_rows = len(summary_df[summary_df["success"].astype(str) == "True"]) if "success" in summary_df.columns else 0
-                failed_rows = total_rows - success_rows
 
-                status_col1, status_col2, status_col3 = st.columns(3)
+                if "success" not in summary_df.columns:
+                    summary_df["success"] = False
+
+                summary_df["success_bool"] = (
+                    summary_df["success"]
+                    .astype(str)
+                    .str.lower()
+                    .eq("true")
+                )
+
+                if "weak_metadata" not in summary_df.columns:
+                    summary_df["weak_metadata"] = ""
+
+                if "error" not in summary_df.columns:
+                    summary_df["error"] = ""
+
+                summary_df["error_reason"] = (
+                    summary_df["error"]
+                    .astype(str)
+                    .replace("nan", "")
+                    .replace("None", "")
+                )
+
+                summary_df["review_required"] = (
+                    (~summary_df["success_bool"]) |
+                    (summary_df["weak_metadata"].astype(str).str.len() > 0)
+                )
+
+                success_rows = len(summary_df[summary_df["success_bool"] == True])
+                failed_rows = len(summary_df[summary_df["success_bool"] == False])
+                warning_rows = len(
+                    summary_df[
+                        (summary_df["success_bool"] == True) &
+                        (summary_df["weak_metadata"].astype(str).str.len() > 0)
+                    ]
+                )
+
+                status_col1, status_col2, status_col3, status_col4 = st.columns(4)
                 status_col1.metric("Processed", total_rows)
                 status_col2.metric("Successful", success_rows)
-                status_col3.metric("Needs review", failed_rows)
+                status_col3.metric("Warnings", warning_rows)
+                status_col4.metric("Failed", failed_rows)
 
-                st.dataframe(summary_df, use_container_width=True)
+                display_columns = [
+                    col for col in [
+                        "assessment_name",
+                        "folder_name",
+                        "success",
+                        "weak_metadata",
+                        "error_reason",
+                        "pdf_path",
+                    ]
+                    if col in summary_df.columns
+                ]
 
-                weak = summary_df[(summary_df["success"].astype(str) != "True") | (summary_df["weak_metadata"].astype(str).str.len() > 0)]
+                if not display_columns:
+                    display_columns = summary_df.columns.tolist()
+
+                st.dataframe(
+                    summary_df[display_columns],
+                    use_container_width=True
+                )
+
+                weak = summary_df[
+                    (~summary_df["success_bool"]) |
+                    (summary_df["weak_metadata"].astype(str).str.len() > 0)
+                ]
                 if not weak.empty:
                     st.warning("Some rows need review.")
-                    st.dataframe(weak, use_container_width=True)
+
+                    review_columns = [
+                        col for col in [
+                            "assessment_name",
+                            "folder_name",
+                            "success",
+                            "weak_metadata",
+                            "error_reason",
+                        ]
+                        if col in weak.columns
+                    ]
+
+                    st.dataframe(
+                        weak[review_columns],
+                        use_container_width=True
+                    )
+
+                    retry_candidates = []
+
+                    if "folder_id" in weak.columns:
+                        retry_candidates = (
+                            weak["folder_id"]
+                            .dropna()
+                            .astype(str)
+                            .tolist()
+                        )
+
+                    if len(retry_candidates) > 0:
+                        retry_failed = st.button(
+                            "Retry failed/review reports",
+                            key="retry_failed_reports",
+                            use_container_width=True,
+                        )
+
+                        if retry_failed:
+                            with st.spinner(f"Retrying {len(retry_candidates)} reports..."):
+                                retry_returncode, retry_output, retry_summary = run_batch(
+                                    retry_candidates,
+                                    credentials_path,
+                                    prompt_path,
+                                    model,
+                                    root_folder_id,
+                                )
+
+                            if retry_returncode == 0:
+                                st.success("Retry batch completed.")
+                            else:
+                                st.error("Retry batch completed with failures.")
+
+                            with st.expander("Retry run log"):
+                                st.code(retry_output)
+
                 else:
                     st.success("No failed rows or weak metadata found.")
 
