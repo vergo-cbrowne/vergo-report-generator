@@ -165,36 +165,34 @@ def apply_vergo_theme():
         div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{ border-radius:14px; border:1px solid var(--border); overflow:hidden; }}
         @media (max-width:1100px) {{ .metric-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
         @media print {{ section[data-testid="stSidebar"], header, footer, .stButton, .stDownloadButton, div[role="tablist"] {{ display:none !important; }} [data-testid="stAppViewContainer"], [data-testid="stMain"], .block-container {{ background:#fff !important; color:#000 !important; max-width:100% !important; padding:0.45in !important; }} * {{ color:#000 !important; box-shadow:none !important; text-shadow:none !important; }} .metric-card,.summary-card,.action-bar,.table-shell {{ border:1px solid #bbb !important; background:#fff !important; }} }}
-        
-        <style id="VERGO_SIDEBAR_BOTTOM_CARD_FIX">
-        .sidebar-user-card {
+
+        .sidebar-user-card {{
             margin-top: 1.2rem;
             padding: 1rem;
             border: 1px solid rgba(255,255,255,0.14);
             border-radius: 14px;
             background: rgba(255,255,255,0.045);
-        }
-        .sidebar-user-title {
+        }}
+        .sidebar-user-title {{
             font-weight: 800;
             margin-bottom: 0.2rem;
-        }
-        .sidebar-user-role {
+        }}
+        .sidebar-user-role {{
             color: rgba(255,255,255,0.62);
             font-size: 0.85rem;
             margin-bottom: 0.75rem;
-        }
-        .sidebar-status {
+        }}
+        .sidebar-status {{
             color: #58d34f;
             font-size: 0.85rem;
             font-weight: 700;
-        }
-        .sidebar-footer-year {
+        }}
+        .sidebar-footer-year {{
             margin-top: 1rem;
             text-align: center;
             color: rgba(255,255,255,0.58);
             font-size: 0.82rem;
-        }
-        </style>
+        }}
         </style>
         """,
         unsafe_allow_html=True,
