@@ -14,16 +14,13 @@ try:
 except Exception:
     render_client_completion_tracker_page = None
 
-
 DEFAULT_ROOT_FOLDER_ID = "1zRTHGXHKpNDB2yqubgfXKqd2r6qO-92_"
 DEFAULT_CREDENTIALS_PATH = "credentials/service-account.json"
 DEFAULT_PROMPT_PATH = "prompts/vergo_master_report_prompt.md"
 DEFAULT_MODEL = "gpt-4.1"
-
 SCAN_CSV = "output/drive_scan.csv"
 BATCH_SUMMARY_CSV = "output/portal_batch_summary.csv"
 LOGO_PATH = "assets/vergo-logo-white-transparent.png"
-
 
 st.set_page_config(page_title="Vergo Report Admin", page_icon="✅", layout="wide")
 
@@ -33,6 +30,19 @@ def image_to_base64(path: str) -> str:
     if not file_path.exists():
         return ""
     return base64.b64encode(file_path.read_bytes()).decode("utf-8")
+
+
+def google_drive_svg() -> str:
+    return """
+    <svg class="btn-icon" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M6.6 66.8l3.8 6.6c.8 1.4 2 2.5 3.4 3.3l13.7-23.8H0c0 1.5.4 3 1.2 4.4l5.4 9.5z" fill="#0066da"/>
+      <path d="M43.7 25.1L30 1.3c-1.4.8-2.6 1.9-3.4 3.3L1.2 48.7C.4 50.1 0 51.6 0 53h27.5l16.2-27.9z" fill="#00ac47"/>
+      <path d="M73.5 76.7c1.4-.8 2.6-1.9 3.4-3.3l1.6-2.7 7.6-13.3c.8-1.4 1.2-2.9 1.2-4.4H59.8l5.8 11.4 7.9 12.3z" fill="#ea4335"/>
+      <path d="M43.7 25.1L57.4 1.3C56 .5 54.4 0 52.8 0H34.5c-1.6 0-3.1.5-4.5 1.3l13.7 23.8z" fill="#00832d"/>
+      <path d="M59.8 53H27.5L13.8 76.7c1.4.8 2.9 1.3 4.5 1.3H69c1.6 0 3.1-.5 4.5-1.3L59.8 53z" fill="#2684fc"/>
+      <path d="M73.3 26.6L60.7 4.6c-.8-1.4-2-2.5-3.3-3.3L43.7 25.1 59.8 53h27.5c0-1.5-.4-3-1.2-4.4L73.3 26.6z" fill="#ffba00"/>
+    </svg>
+    """
 
 
 def load_local_env_file():
@@ -51,226 +61,109 @@ def apply_vergo_theme():
     if "vergo_dark_mode" not in st.session_state:
         st.session_state.vergo_dark_mode = True
 
-    dark_mode = st.sidebar.toggle("Dark mode", value=st.session_state.vergo_dark_mode)
-    st.session_state.vergo_dark_mode = dark_mode
-
-    light = not dark_mode
-    bg = "#f6f7f2" if light else "#02060a"
-    sidebar = "#ffffff" if light else "#050a11"
-    panel = "#ffffff" if light else "#0b111b"
-    panel2 = "#f1f2ee" if light else "#101827"
-    text = "#101010" if light else "#f6f7f4"
-    muted = "rgba(0,0,0,0.62)" if light else "rgba(255,255,255,0.66)"
-    border = "rgba(0,0,0,0.14)" if light else "rgba(255,255,255,0.14)"
-    input_bg = "#ffffff" if light else "#111827"
+    dark = bool(st.session_state.vergo_dark_mode)
+    bg = "#000000" if dark else "#f6f7f2"
+    sidebar = "#050505" if dark else "#ffffff"
+    panel = "rgba(18,18,18,0.88)" if dark else "#ffffff"
+    panel2 = "rgba(26,26,26,0.78)" if dark else "#f1f2ee"
+    text = "#f7f7f4" if dark else "#101010"
+    muted = "rgba(255,255,255,0.66)" if dark else "rgba(0,0,0,0.62)"
+    border = "rgba(255,255,255,0.14)" if dark else "rgba(0,0,0,0.14)"
+    input_bg = "rgba(255,255,255,0.08)" if dark else "#ffffff"
 
     st.markdown(
         f"""
         <style>
-        @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
         :root {{
-            --bg: {bg};
-            --sidebar: {sidebar};
-            --panel: {panel};
-            --panel2: {panel2};
-            --text: {text};
-            --muted: {muted};
-            --border: {border};
-            --input: {input_bg};
-            --green: #58d34f;
-            --red: #ff4b4b;
-            --blue: #6fb2ff;
-            --orange: #f59e2f;
+            --bg: {bg}; --sidebar: {sidebar}; --panel: {panel}; --panel2: {panel2};
+            --text: {text}; --muted: {muted}; --border: {border}; --input: {input_bg};
+            --green: #58d34f; --green2: #1f8f3d; --blue: #4f9eff; --orange: #f59e2f;
+            --red: #ff5f5f; --shadow: rgba(0,0,0,0.42);
         }}
 
-        header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] {{
-            display: none !important;
-        }}
-
-        html, body, .stApp {{
-            background: var(--bg) !important;
-            color: var(--text) !important;
-            font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-        }}
-
+        header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] {{ display: none !important; }}
+        html, body, .stApp {{ background: var(--bg) !important; color: var(--text) !important; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; }}
         [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
             background:
-                radial-gradient(circle at 78% 4%, rgba(47, 150, 94, 0.24), transparent 28%),
-                radial-gradient(circle at 15% 12%, rgba(72, 130, 180, 0.14), transparent 22%),
-                var(--bg) !important;
+                radial-gradient(circle at 85% 0%, rgba(25, 145, 70, 0.34), transparent 27%),
+                radial-gradient(circle at 12% 10%, rgba(35, 85, 95, 0.12), transparent 23%),
+                #000000 !important;
             color: var(--text) !important;
         }}
-
-        .block-container {{
-            max-width: 1320px !important;
-            padding-top: 2rem !important;
-            padding-bottom: 4rem !important;
-        }}
-
-        section[data-testid="stSidebar"] {{
-            background: linear-gradient(180deg, var(--sidebar), #03070c) !important;
-            border-right: 1px solid var(--border) !important;
-        }}
-
+        .block-container {{ max-width: 1280px !important; padding: 2.25rem 3rem 4rem 3rem !important; }}
+        section[data-testid="stSidebar"] {{ background: linear-gradient(180deg, var(--sidebar), #020202) !important; border-right: 1px solid var(--border) !important; box-shadow: 18px 0 50px rgba(0,0,0,0.35); }}
+        section[data-testid="stSidebar"] > div {{ padding: 1.3rem 1rem 1.25rem 1rem !important; }}
         section[data-testid="stSidebar"] * {{ color: var(--text) !important; }}
-        section[data-testid="stSidebar"] > div {{ padding-top: 1.6rem !important; }}
 
-        .sidebar-welcome {{
-            margin: 1.25rem 0 1.35rem 0;
-            padding-bottom: 1.2rem;
-            border-bottom: 1px solid var(--border);
-        }}
-        .eyebrow, .sidebar-eyebrow {{
-            color: var(--muted);
-            font-size: 0.74rem;
-            font-weight: 700;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-        }}
-        .sidebar-name {{
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-            font-size: 1.6rem;
-            font-weight: 360;
-            letter-spacing: -0.04em;
-            margin-top: 0.45rem;
-        }}
+        .sidebar-logo {{ width: 120px; margin: 0.2rem 0 1.85rem 0; }}
+        .sidebar-collapse {{ position:absolute; right:1rem; top:1.5rem; color:var(--muted); font-size:1.35rem; }}
+        .sidebar-welcome {{ margin: 0 0 1.2rem 0; }}
+        .sidebar-welcome-label {{ color: var(--muted); font-size: 0.92rem; margin-bottom: 0.35rem; }}
+        .sidebar-name {{ font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; }}
         .sidebar-divider {{ height: 1px; background: var(--border); margin: 1.35rem 0; }}
-
-        .top-logo {{ width: 150px; margin-bottom: 1rem; }}
-        .top-rule {{ height: 1px; background: var(--border); margin: 1rem 0 2.4rem 0; }}
-
-        .hero {{
-            padding-bottom: 2rem;
-            margin-bottom: 1.8rem;
-            border-bottom: 1px solid var(--border);
-            background: transparent !important;
-            border-radius: 0 !important;
+        .sidebar-action-button {{
+            display:flex; align-items:center; gap:0.85rem; width:100%; box-sizing:border-box;
+            padding: 0.78rem 1rem; border-radius: 10px; text-decoration:none; margin: 0.7rem 0;
+            font-weight: 750; border:1px solid var(--border);
         }}
+        .scan-btn {{ background: linear-gradient(135deg, rgba(35,130,54,0.95), rgba(22,100,46,0.92)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 30px rgba(31,143,61,0.18); }}
+        .csv-btn {{ background: rgba(24,34,48,0.78); }}
+        .btn-icon {{ width: 26px; height: 26px; flex: 0 0 auto; }}
+        .file-icon {{ width: 24px; height: 24px; flex:0 0 auto; color:#74d7ff; }}
+
+        .theme-row {{ display:flex; align-items:center; justify-content:space-between; margin:1.1rem 0 0.8rem 0; color:var(--muted); font-size:0.9rem; }}
+        .logout-faux {{
+            display:flex; align-items:center; justify-content:center; gap:0.65rem; width:100%; box-sizing:border-box;
+            min-height:46px; border-radius:10px; border:1px solid var(--border); background: rgba(255,255,255,0.045);
+            color: var(--text); font-weight:750; margin-top:0.75rem;
+        }}
+        .sidebar-bottom-space {{ height: 0.7rem; }}
+
+        .top-logo {{ width: 122px; margin: 0.25rem 0 1.3rem 0; }}
+        .eyebrow {{ color: var(--green); font-size: 0.78rem; font-weight: 850; letter-spacing: 0.18em; text-transform: uppercase; }}
+        .hero {{ padding: 0.75rem 0 2.25rem 0; margin-bottom: 2.1rem; border-bottom: 1px solid var(--border); background: transparent !important; }}
         .hero-title {{
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-            font-size: clamp(3rem, 5.1vw, 5rem);
-            line-height: 1.02;
-            font-weight: 300;
-            letter-spacing: -0.065em;
-            margin: 1.2rem 0 1.2rem 0;
-            color: var(--text);
+            font-size: clamp(3.1rem, 5.2vw, 5.25rem); line-height: 1.02; font-weight: 280;
+            letter-spacing: -0.067em; margin: 1.15rem 0 1.2rem 0; color: var(--text);
         }}
-        .hero-subtitle {{
-            max-width: 780px;
-            color: var(--muted);
-            font-size: 1.03rem;
-            line-height: 1.55;
-        }}
+        .hero-subtitle {{ max-width: 760px; color: var(--muted); font-size: 1.02rem; line-height: 1.6; }}
 
-        h1, h2, h3 {{ color: var(--text) !important; }}
-        h2 {{ font-size: 1.35rem !important; }}
-        h3 {{ font-size: 1.05rem !important; }}
-
-        .stTabs [data-baseweb="tab-list"] {{ border-bottom: 1px solid var(--border); gap: 1.6rem; }}
-        .stTabs [data-baseweb="tab"] {{
-            color: var(--muted) !important;
-            font-size: 0.94rem !important;
-            font-weight: 600 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }}
+        h1,h2,h3 {{ color: var(--text) !important; }} h2 {{ font-size: 1.45rem !important; }} h3 {{ font-size: 1.05rem !important; }}
+        label {{ font-weight: 650 !important; }}
+        .stTabs [data-baseweb="tab-list"] {{ border-bottom: 1px solid var(--border); gap: 2rem; }}
+        .stTabs [data-baseweb="tab"] {{ color: var(--muted) !important; font-size: 0.98rem !important; font-weight: 650 !important; padding-left:0 !important; padding-right:0 !important; }}
         .stTabs [aria-selected="true"] {{ color: var(--text) !important; border-bottom: 4px solid var(--green) !important; }}
 
-        input, textarea, select, div[data-baseweb="input"], div[data-baseweb="select"] > div {{
-            background: var(--input) !important;
-            color: var(--text) !important;
-            border-color: var(--border) !important;
-            border-radius: 12px !important;
-        }}
+        input, textarea, div[data-baseweb="input"], div[data-baseweb="select"] > div {{ background: var(--input) !important; color: var(--text) !important; border: 1px solid var(--border) !important; border-radius: 10px !important; }}
         div[data-baseweb="input"] input, div[data-baseweb="select"] * {{ color: var(--text) !important; }}
 
-        .metric-grid {{
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 1rem;
-            margin: 1.45rem 0 1.75rem 0;
-        }}
-        .metric-card {{
-            background: linear-gradient(145deg, var(--panel), var(--panel2));
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 1.25rem;
-            min-height: 118px;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }}
-        .metric-icon {{
-            width: 48px; height: 48px; border-radius: 999px;
-            display:flex; align-items:center; justify-content:center;
-            font-size: 1.35rem; flex: 0 0 auto;
-        }}
-        .icon-blue {{ color: var(--blue); background: rgba(111,178,255,0.15); border: 1px solid rgba(111,178,255,0.42); }}
-        .icon-green {{ color: var(--green); background: rgba(88,211,79,0.15); border: 1px solid rgba(88,211,79,0.42); }}
-        .icon-orange {{ color: var(--orange); background: rgba(245,158,47,0.16); border: 1px solid rgba(245,158,47,0.42); }}
-        .icon-red {{ color: #ff6b6b; background: rgba(255,75,75,0.14); border: 1px solid rgba(255,75,75,0.42); }}
-        .metric-label {{ color: var(--muted); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }}
-        .metric-value {{ font-size: 2.25rem; line-height: 1; font-weight: 600; color: var(--text); margin-top: 0.4rem; }}
-        .metric-green {{ color: var(--green); }}
-        .metric-red {{ color: #ff6b6b; }}
+        .metric-grid {{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:1rem; margin:1.55rem 0 1.75rem 0; }}
+        .metric-card {{ background: linear-gradient(145deg, var(--panel), var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.2rem; min-height:100px; display:flex; align-items:center; gap:1rem; box-shadow: 0 18px 42px var(--shadow); }}
+        .metric-icon {{ width:48px; height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex:0 0 auto; }}
+        .icon-blue {{ color:var(--blue); background:rgba(79,158,255,0.16); border:1px solid rgba(79,158,255,0.38); }}
+        .icon-green {{ color:var(--green); background:rgba(88,211,79,0.15); border:1px solid rgba(88,211,79,0.38); }}
+        .icon-orange {{ color:var(--orange); background:rgba(245,158,47,0.15); border:1px solid rgba(245,158,47,0.38); }}
+        .metric-label {{ color: var(--muted); font-size:0.72rem; font-weight:850; letter-spacing:0.13em; text-transform:uppercase; }}
+        .metric-value {{ font-size:2.3rem; line-height:1; font-weight:750; margin-top:0.42rem; }} .metric-green {{ color:var(--green); }}
 
-        .summary-card, .action-bar, .table-shell {{
-            background: linear-gradient(145deg, var(--panel), var(--panel2));
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 1.25rem;
-            margin: 1.25rem 0;
-        }}
-        .summary-title {{ font-size: 1.1rem; font-weight: 700; margin-bottom: 0.7rem; border-left: 4px solid var(--green); padding-left: 0.75rem; }}
-        .summary-copy, .muted, .action-copy {{ color: var(--muted); line-height: 1.55; }}
-        .summary-dot {{ color: var(--green); margin: 0 0.45rem; }}
+        .summary-card, .action-bar, .table-shell {{ background: linear-gradient(145deg, var(--panel), var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.25rem; margin:1.25rem 0; box-shadow: 0 18px 42px var(--shadow); }}
+        .summary-title {{ font-size:1.05rem; font-weight:800; margin-bottom:0.55rem; }} .summary-copy,.muted,.action-copy {{ color:var(--muted); line-height:1.55; }} .summary-dot {{ color:var(--green); margin:0 0.45rem; }}
+        .missing-action {{ display:flex; justify-content:space-between; align-items:center; gap:1rem; border-color:rgba(88,211,79,0.28); background:linear-gradient(145deg, rgba(14,45,19,0.42), rgba(12,20,14,0.78)); }}
+        .missing-title {{ font-weight:850; font-size:1.05rem; margin-bottom:0.25rem; }}
 
-        .link-table {{ width: 100%; border-collapse: collapse; font-size: 0.88rem; }}
-        .link-table th {{ text-align: left; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.11em; padding: 0.75rem; border-bottom: 1px solid var(--border); }}
-        .link-table td {{ padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text); }}
-        .link-table a {{ color: var(--green) !important; font-weight: 700; text-decoration: none; }}
+        .link-table {{ width:100%; border-collapse:collapse; font-size:0.88rem; }} .link-table th {{ text-align:left; color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.11em; padding:0.75rem; border-bottom:1px solid var(--border); }} .link-table td {{ padding:0.75rem; border-bottom:1px solid var(--border); }} .link-table a {{ color:var(--green) !important; font-weight:750; text-decoration:none; }}
+        .status-chip {{ display:inline-flex; border-radius:999px; padding:0.25rem 0.55rem; font-size:0.78rem; font-weight:750; }} .chip-ready,.chip-completed {{ color:var(--green); background:rgba(88,211,79,0.12); }} .chip-review {{ color:var(--orange); background:rgba(245,158,47,0.12); }} .chip-failed {{ color:#ff6b6b; background:rgba(255,75,75,0.12); }}
 
-        .status-chip {{ display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.25rem 0.55rem; font-size: 0.78rem; font-weight: 700; }}
-        .chip-ready {{ color: var(--green); background: rgba(88, 211, 79, 0.12); }}
-        .chip-completed {{ color: var(--blue); background: rgba(77, 151, 255, 0.12); }}
-        .chip-review {{ color: var(--orange); background: rgba(245, 158, 47, 0.12); }}
-        .chip-failed {{ color: #ff6b6b; background: rgba(255, 75, 75, 0.12); }}
+        .stButton > button {{ border-radius:10px !important; min-height:44px !important; font-weight:780 !important; background:linear-gradient(135deg,#2fb84a,#168f3b) !important; color:#fff !important; border:1px solid rgba(88,211,79,0.55) !important; }} .stButton > button * {{ color:inherit !important; }}
+        section[data-testid="stSidebar"] .stButton button {{ background: rgba(255,255,255,0.045) !important; color: var(--text) !important; border: 1px solid var(--border) !important; box-shadow:none !important; }}
+        section[data-testid="stSidebar"] .stButton button * {{ color:inherit !important; }}
 
-        .stButton > button {{
-            border-radius: 12px !important;
-            min-height: 44px !important;
-            font-weight: 700 !important;
-            border: 1px solid var(--border) !important;
-            background: #ffffff !important;
-            color: #050505 !important;
-        }}
-        .stButton > button * {{ color: inherit !important; }}
-        section[data-testid="stSidebar"] .stButton:nth-of-type(1) button {{
-            background: linear-gradient(135deg, #1c7a34, #2d9c46) !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(88, 211, 79, 0.55) !important;
-        }}
-        section[data-testid="stSidebar"] .stButton:nth-of-type(2) button {{
-            background: #12213a !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(111, 178, 255, 0.35) !important;
-        }}
-        section[data-testid="stSidebar"] .stButton:last-of-type button {{
-            background: transparent !important;
-            color: var(--red) !important;
-            border: 1px solid var(--red) !important;
-        }}
-
-        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{ border-radius: 18px; border: 1px solid var(--border); overflow: hidden; }}
-
-        @media (max-width: 1100px) {{ .metric-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }}
-        @media print {{
-            section[data-testid="stSidebar"], header, footer, .stButton, .stDownloadButton, div[role="tablist"] {{ display: none !important; }}
-            [data-testid="stAppViewContainer"], [data-testid="stMain"], .main, section, .block-container {{ background: #ffffff !important; color: #000000 !important; max-width: 100% !important; padding: 0.45in !important; }}
-            * {{ color: #000000 !important; box-shadow: none !important; text-shadow: none !important; }}
-            .metric-card, .summary-card, .action-bar, .table-shell {{ border: 1px solid #bbbbbb !important; background: #ffffff !important; }}
-        }}
+        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{ border-radius:14px; border:1px solid var(--border); overflow:hidden; }}
+        @media (max-width:1100px) {{ .metric-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
+        @media print {{ section[data-testid="stSidebar"], header, footer, .stButton, .stDownloadButton, div[role="tablist"] {{ display:none !important; }} [data-testid="stAppViewContainer"], [data-testid="stMain"], .block-container {{ background:#fff !important; color:#000 !important; max-width:100% !important; padding:0.45in !important; }} * {{ color:#000 !important; box-shadow:none !important; text-shadow:none !important; }} .metric-card,.summary-card,.action-bar,.table-shell {{ border:1px solid #bbb !important; background:#fff !important; }} }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -285,31 +178,16 @@ def require_admin_login():
         st.stop()
     if st.session_state.get("vergo_admin_authenticated") is True:
         return
-
     logo_b64 = image_to_base64(LOGO_PATH)
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="top-logo" />' if logo_b64 else ""
-    st.markdown(
-        f"""
-        {logo_html}
-        <div class="eyebrow">Secure Access</div>
-        <div class="top-rule"></div>
-        <div class="hero">
-            <div class="eyebrow">Vergo Operations</div>
-            <div class="hero-title">Vergo Admin Login</div>
-            <div class="hero-subtitle">Sign in to access the report operations dashboard.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"""{logo_html}<div class="hero"><div class="eyebrow">Secure Access</div><div class="hero-title">Vergo Admin Login</div><div class="hero-subtitle">Sign in to access the report operations dashboard.</div></div>""", unsafe_allow_html=True)
     with st.form("vergo_admin_login_form"):
         st.markdown("### Sign in")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Sign in", use_container_width=True)
     if submitted:
-        user_ok = hmac.compare_digest(username.strip().lower(), admin_user.strip().lower())
-        password_ok = hmac.compare_digest(password, admin_password)
-        if user_ok and password_ok:
+        if hmac.compare_digest(username.strip().lower(), admin_user.strip().lower()) and hmac.compare_digest(password, admin_password):
             st.session_state["vergo_admin_authenticated"] = True
             st.rerun()
         st.error("Invalid username or password.")
@@ -317,55 +195,40 @@ def require_admin_login():
 
 
 def render_sidebar_controls():
-    st.sidebar.markdown(
-        """
-        <div class="sidebar-welcome">
-            <div class="sidebar-eyebrow">Welcome back</div>
-            <div class="sidebar-name">Vergo Admin</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    logo_b64 = image_to_base64(LOGO_PATH)
+    logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="sidebar-logo" />' if logo_b64 else ""
+    st.sidebar.markdown(f'{logo_html}<div class="sidebar-collapse">«</div><div class="sidebar-welcome"><div class="sidebar-welcome-label">Welcome back</div><div class="sidebar-name">Vergo Admin</div></div>', unsafe_allow_html=True)
+    st.sidebar.markdown(f'<div class="sidebar-action-button scan-btn">{google_drive_svg()}<span>Scan Google Drive</span></div>', unsafe_allow_html=True)
+    scan_clicked = st.sidebar.button("Scan Google Drive", key="scan_drive_hidden", use_container_width=True)
+    st.sidebar.markdown('<style>button[kind="secondary"][data-testid="baseButton-secondary"]:has(div p:contains("Scan Google Drive")){display:none}</style>', unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="sidebar-action-button csv-btn"><svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Load existing scan CSV</span></div>', unsafe_allow_html=True)
+    load_existing_clicked = st.sidebar.button("Load existing scan CSV", key="load_csv_hidden", use_container_width=True)
 
-    scan_clicked = st.sidebar.button("△  Scan Google Drive", use_container_width=True)
-    load_existing_clicked = st.sidebar.button("▣  Load existing scan CSV", use_container_width=True)
     st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     st.sidebar.header("Configuration")
-
     credentials_path = st.sidebar.text_input("Credentials path", DEFAULT_CREDENTIALS_PATH)
     root_folder_id = st.sidebar.text_input("Processed videos root folder ID", DEFAULT_ROOT_FOLDER_ID)
     prompt_path = st.sidebar.text_input("Prompt path", DEFAULT_PROMPT_PATH)
     model = st.sidebar.text_input("OpenAI model", DEFAULT_MODEL)
     full_scan = st.sidebar.checkbox("Full Drive scan", value=False, help="Leave off for faster testing. Turn on when you want to scan everything.")
     assessment_date_required = st.sidebar.checkbox("Require assessment date", value=False, help="If off, missing assessment dates are not treated as a review warning.")
-    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-
-    if st.sidebar.button("⏻  Log Out", use_container_width=True):
+    st.sidebar.markdown('<div class="sidebar-divider"></div><div class="theme-row"><span>Theme</span><span>☼ &nbsp;&nbsp; ◐ &nbsp;&nbsp; ☾</span></div>', unsafe_allow_html=True)
+    st.session_state.vergo_dark_mode = st.sidebar.toggle("Dark mode", value=st.session_state.get("vergo_dark_mode", True), key="dark_mode_bottom_toggle")
+    st.sidebar.markdown('<div class="logout-faux">↪ <span>Log Out</span></div>', unsafe_allow_html=True)
+    if st.sidebar.button("Log Out", key="real_logout_button", use_container_width=True):
         st.session_state["vergo_admin_authenticated"] = False
         st.rerun()
-
     return credentials_path, root_folder_id, prompt_path, model, full_scan, assessment_date_required, scan_clicked, load_existing_clicked
 
 
 def render_page_header():
-    logo_b64 = image_to_base64(LOGO_PATH)
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="top-logo" />' if logo_b64 else ""
-    st.markdown(
-        f"""
-        {logo_html}
-        <div class="eyebrow">Report Operations</div>
-        <div class="top-rule"></div>
-        <div class="hero">
-            <div class="eyebrow" style="color: var(--green);">Vergo Operations</div>
-            <div class="hero-title">Report Admin Portal</div>
-            <div class="hero-subtitle">
-                Scan Google Drive, review processed assessment folders, generate Vergo movement analysis reports,
-                and monitor batch results from one operations dashboard.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("""
+    <div class="hero">
+      <div class="eyebrow">Vergo Operations</div>
+      <div class="hero-title">Report Admin Portal</div>
+      <div class="hero-subtitle">Scan Google Drive, review processed assessment folders, generate Vergo movement analysis reports, and monitor batch results from one operations dashboard.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def load_scan_csv(path: str) -> pd.DataFrame:
@@ -441,17 +304,14 @@ def format_date(value) -> str:
 
 
 def render_metric_cards(total: int, ready: int, completed: int, missing: int):
-    st.markdown(
-        f"""
-        <div class="metric-grid">
-            <div class="metric-card"><div class="metric-icon icon-blue">□</div><div><div class="metric-label">Visible Folders</div><div class="metric-value">{total}</div></div></div>
-            <div class="metric-card"><div class="metric-icon icon-green">✓</div><div><div class="metric-label">Ready to Generate</div><div class="metric-value metric-green">{ready}</div></div></div>
-            <div class="metric-card"><div class="metric-icon icon-orange">▤</div><div><div class="metric-label">Completed Reports</div><div class="metric-value">{completed}</div></div></div>
-            <div class="metric-card"><div class="metric-icon icon-red">!</div><div><div class="metric-label">Missing PDFs</div><div class="metric-value metric-red">{missing}</div></div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"""
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-icon icon-green">□</div><div><div class="metric-label">Visible Folders</div><div class="metric-value">{total}</div></div></div>
+      <div class="metric-card"><div class="metric-icon icon-green">✓</div><div><div class="metric-label">Ready to Generate</div><div class="metric-value metric-green">{ready}</div></div></div>
+      <div class="metric-card"><div class="metric-icon icon-blue">▤</div><div><div class="metric-label">Completed Reports</div><div class="metric-value">{completed}</div></div></div>
+      <div class="metric-card"><div class="metric-icon icon-orange">!</div><div><div class="metric-label">Missing PDFs</div><div class="metric-value">{missing}</div></div></div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def main():
@@ -460,7 +320,6 @@ def main():
     require_admin_login()
     credentials_path, root_folder_id, prompt_path, model, full_scan, assessment_date_required, scan_clicked, load_existing_clicked = render_sidebar_controls()
     render_page_header()
-
     if not Path(credentials_path).exists():
         st.error(f"Credentials file not found: {credentials_path}")
         st.stop()
@@ -474,7 +333,7 @@ def main():
         if scan_clicked:
             with st.spinner("Scanning Google Drive folders..."):
                 try:
-                    st.session_state["scan_df"] = run_drive_scan(credentials_path=credentials_path, root_folder_id=root_folder_id, full_scan=full_scan)
+                    st.session_state["scan_df"] = run_drive_scan(credentials_path, root_folder_id, full_scan)
                     st.success("Drive scan complete.")
                 except Exception as exc:
                     st.error(f"Drive scan failed: {exc}")
@@ -510,7 +369,7 @@ def main():
             status_options = ["All", "Ready", "Completed", "Needs Review", "Missing PDF"]
             status_filter = st.selectbox("Status filter", status_options)
         with col4:
-            search = st.text_input("Search assessment name", "")
+            search = st.text_input("Search assessment name", "", placeholder="Search...")
 
         filtered = valid_df.copy()
         if company_filter != "All":
@@ -536,23 +395,15 @@ def main():
         last_modified = "—"
         if len(filtered) > 0 and "modified_time" in filtered.columns:
             last_modified = format_date(filtered["modified_time"].max())
-        st.markdown(
-            f"""
-            <div class="summary-card">
-                <div class="summary-title">Last scan summary</div>
-                <div class="summary-copy">Showing {len(filtered)} folders <span class="summary-dot">•</span>{ready_count} ready to generate <span class="summary-dot">•</span>{completed_count} completed <span class="summary-dot">•</span>{missing_pdf_count} missing PDFs <span class="summary-dot">•</span>Latest modified: {last_modified}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown(f'<div class="summary-card"><div class="summary-title">Last scan summary</div><div class="summary-copy">Showing {len(filtered)} folders <span class="summary-dot">•</span>{ready_count} ready to generate <span class="summary-dot">•</span>{completed_count} completed <span class="summary-dot">•</span>{missing_pdf_count} missing PDFs <span class="summary-dot">•</span>Latest modified: {last_modified}</div></div>', unsafe_allow_html=True)
 
         missing_pdf_rows = filtered[filtered["has_pdf"].astype(str) != "True"]
         missing_pdf_folder_ids = missing_pdf_rows["folder_id"].tolist()
-        top_action_left, top_action_right = st.columns([1, 2])
-        with top_action_left:
-            generate_missing_top_clicked = st.button("Generate all visible missing PDFs", key="generate_missing_top", disabled=len(missing_pdf_folder_ids) == 0, use_container_width=True)
-        with top_action_right:
-            st.caption("Use filters first, then generate every visible folder that does not already have a PDF.")
+        left_action, right_action = st.columns([2, 1])
+        with left_action:
+            st.markdown('<div class="missing-action action-bar"><div><div class="missing-title">Generate all visible missing PDFs</div><div class="action-copy">Use filters first, then generate every visible folder that does not already have a PDF.</div></div></div>', unsafe_allow_html=True)
+        with right_action:
+            generate_missing_top_clicked = st.button("Generate Missing PDFs  ›", key="generate_missing_top", disabled=len(missing_pdf_folder_ids) == 0, use_container_width=True)
 
         table_rows = []
         for _, row in filtered.iterrows():
@@ -561,7 +412,6 @@ def main():
         st.markdown(f'<div class="table-shell">{preview_df.to_html(escape=False, index=False, classes="link-table")}</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="action-bar"><strong>Report generation</strong><br><span class="action-copy">Select specific folders below, or generate all visible folders that are missing PDFs.</span></div>', unsafe_allow_html=True)
-
         select_columns = ["company", "account", "assessment_folder", "status_badge", "has_pdf", "status", "modified_time", "folder_id"]
         filtered_display = filtered[select_columns].copy().rename(columns={"company": "Company", "account": "Account", "assessment_folder": "Assessment Folder", "status_badge": "Status", "has_pdf": "Has PDF", "status": "Drive Status", "modified_time": "Last Modified", "folder_id": "Folder ID"})
         filtered_display.insert(0, "Select", False)
@@ -573,7 +423,7 @@ def main():
 
         left, middle, right = st.columns([1, 1, 2])
         with left:
-            generate_clicked = st.button("Generate selected reports", type="primary", disabled=len(selected_folder_ids) == 0, use_container_width=True)
+            generate_clicked = st.button("Generate selected reports", disabled=len(selected_folder_ids) == 0, use_container_width=True)
         with middle:
             generate_missing_clicked = st.button("Generate all visible missing PDFs", disabled=len(missing_pdf_folder_ids) == 0, use_container_width=True)
         with right:
@@ -593,10 +443,7 @@ def main():
             with st.spinner(f"Generating {len(folders_to_run)} {run_label}..."):
                 returncode, output, summary_df = run_batch(folders_to_run, credentials_path, prompt_path, model, root_folder_id)
             summary_df = clean_batch_summary(summary_df, assessment_date_required)
-            if returncode == 0:
-                st.success("Batch generation completed.")
-            else:
-                st.error("Batch generation completed with one or more failures.")
+            st.success("Batch generation completed.") if returncode == 0 else st.error("Batch generation completed with one or more failures.")
             if not summary_df.empty:
                 st.subheader("Batch summary")
                 st.dataframe(summary_df, use_container_width=True)
