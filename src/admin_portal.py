@@ -327,6 +327,13 @@ def run_batch(folder_ids: list[str], credentials_path: str, prompt_path: str, mo
     return result.returncode, output, summary
 
 
+def render_generation_progress(stage: str, current: int, total: int):
+    total = max(total, 1)
+    progress = min(max(current / total, 0), 1)
+    st.progress(progress)
+    st.caption(f"{stage} • {current} of {total}")
+
+
 def make_link(url: str, label: str) -> str:
     if not isinstance(url, str) or not url.strip():
         return '<span class="muted">—</span>'
@@ -488,40 +495,107 @@ def main():
         st.write(f"Selected **{len(selected_folder_ids)}** folders.")
         st.write(f"Visible missing-PDF folders: **{len(missing_pdf_folder_ids)}**")
 
-        left, middle, right = st.columns([1, 1, 2])
+        left, middle, right = st.columns([1, 1, 1])
         with left:
             generate_clicked = st.button("Generate selected reports", disabled=len(selected_folder_ids) == 0, use_container_width=True)
         with middle:
-            generate_missing_clicked = st.button("Generate all visible missing PDFs", disabled=len(missing_pdf_folder_ids) == 0, use_container_width=True)
+            regenerate_clicked = st.button("Re-generate selected reports", disabled=len(selected_folder_ids) == 0, use_container_width=True)
         with right:
-            if len(selected_folder_ids) > 0:
-                st.caption("Selected folders")
+            generate_missing_clicked = st.button("Generate all visible missing PDFs", disabled=len(missing_pdf_folder_ids) == 0, use_container_width=True)
+
+        if len(selected_folder_ids) > 0:
+            with st.expander("Selected folders", expanded=False):
                 st.write(", ".join(selected_rows["Assessment Folder"].tolist()))
 
         folders_to_run = []
         run_label = ""
+        run_mode = ""
         if generate_clicked:
             folders_to_run = selected_folder_ids
             run_label = "selected reports"
+            run_mode = "generate"
+        if regenerate_clicked:
+            folders_to_run = selected_folder_ids
+            run_label = "selected reports"
+            run_mode = "regenerate"
         if generate_missing_clicked or generate_missing_top_clicked:
             folders_to_run = missing_pdf_folder_ids
             run_label = "visible missing PDFs"
+            run_mode = "missing"
+
         if folders_to_run:
+            st.session_state["last_generation_status"] = {
+                "mode": run_mode,
+                "label": run_label,
+                "total": len(folders_to_run),
+                "state": "running",
+            }
+
+            status_box = st.empty()
+            progress_box = st.empty()
+            log_box = st.empty()
+
+            with status_box.container():
+                st.info(f"Preparing to process {len(folders_to_run)} {run_label}...")
+                render_generation_progress("Preparing batch", 1, 4)
+
+            with progress_box.container():
+                render_generation_progress("Writing folder queue", 2, 4)
+
             with st.spinner(f"Generating {len(folders_to_run)} {run_label}..."):
                 returncode, output, summary_df = run_batch(folders_to_run, credentials_path, prompt_path, model, root_folder_id)
+
             summary_df = clean_batch_summary(summary_df, assessment_date_required)
-            st.success("Batch generation completed.") if returncode == 0 else st.error("Batch generation completed with one or more failures.")
+
+            with progress_box.container():
+                render_generation_progress("Processing complete", 4, 4)
+
+            st.session_state["last_generation_status"] = {
+                "mode": run_mode,
+                "label": run_label,
+                "total": len(folders_to_run),
+                "state": "completed" if returncode == 0 else "completed_with_errors",
+            }
+
+            if returncode == 0:
+                st.success(f"Generation completed for {len(folders_to_run)} {run_label}.")
+            else:
+                st.error("Generation completed with one or more failures.")
+
             if not summary_df.empty:
                 st.subheader("Batch summary")
+                total_rows = len(summary_df)
+                success_rows = len(summary_df[summary_df["success"].astype(str) == "True"]) if "success" in summary_df.columns else 0
+                failed_rows = total_rows - success_rows
+
+                status_col1, status_col2, status_col3 = st.columns(3)
+                status_col1.metric("Processed", total_rows)
+                status_col2.metric("Successful", success_rows)
+                status_col3.metric("Needs review", failed_rows)
+
                 st.dataframe(summary_df, use_container_width=True)
+
                 weak = summary_df[(summary_df["success"].astype(str) != "True") | (summary_df["weak_metadata"].astype(str).str.len() > 0)]
                 if not weak.empty:
                     st.warning("Some rows need review.")
                     st.dataframe(weak, use_container_width=True)
                 else:
                     st.success("No failed rows or weak metadata found.")
+
             with st.expander("Raw run log"):
                 st.code(output)
+
+        last_status = st.session_state.get("last_generation_status")
+        if last_status:
+            state = last_status.get("state", "unknown")
+            total = last_status.get("total", 0)
+            label = last_status.get("label", "reports")
+            if state == "completed":
+                st.caption(f"Last run: completed successfully for {total} {label}.")
+            elif state == "completed_with_errors":
+                st.caption(f"Last run: completed with errors for {total} {label}.")
+            elif state == "running":
+                st.caption(f"Last run: still marked as running for {total} {label}.")
 
     if len(tabs) > 1 and render_client_completion_tracker_page is not None:
         with tabs[1]:
