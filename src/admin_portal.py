@@ -47,6 +47,15 @@ def google_drive_svg() -> str:
     """
 
 
+def power_icon_svg() -> str:
+    return """
+    <svg class="power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2v10"/>
+        <path d="M18.36 6.64a9 9 0 1 1-12.72 0"/>
+    </svg>
+    """
+
+
 def load_local_env_file():
     env_path = Path(".env")
     if not env_path.exists():
@@ -60,73 +69,101 @@ def load_local_env_file():
 
 
 def apply_vergo_theme():
+    dark = bool(st.session_state.get("vergo_dark_mode", True))
+    if dark:
+        bg = "#000000"
+        sidebar = "#050505"
+        panel = "rgba(18,18,18,.9)"
+        panel2 = "rgba(28,28,28,.82)"
+        text = "#f7f7f4"
+        muted = "rgba(255,255,255,.64)"
+        border = "rgba(255,255,255,.14)"
+        input_bg = "rgba(255,255,255,.08)"
+        app_gradient = "radial-gradient(circle at 85% 0%, rgba(25,145,70,.28), transparent 27%), radial-gradient(circle at 12% 10%, rgba(35,85,95,.10), transparent 23%), #000"
+        sidebar_gradient = "linear-gradient(180deg,#050505,#020202)"
+    else:
+        bg = "#f6f7f2"
+        sidebar = "#ffffff"
+        panel = "rgba(255,255,255,.96)"
+        panel2 = "rgba(241,242,238,.92)"
+        text = "#101010"
+        muted = "rgba(0,0,0,.62)"
+        border = "rgba(0,0,0,.14)"
+        input_bg = "rgba(255,255,255,.95)"
+        app_gradient = "radial-gradient(circle at 85% 0%, rgba(88,211,79,.18), transparent 27%), radial-gradient(circle at 12% 10%, rgba(35,85,95,.08), transparent 23%), #f6f7f2"
+        sidebar_gradient = "linear-gradient(180deg,#ffffff,#f3f4ef)"
+
     st.markdown(
-        """
+        f"""
         <style>
         @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
-        :root { --bg:#000000; --sidebar:#050505; --panel:rgba(18,18,18,.9); --panel2:rgba(28,28,28,.82); --text:#f7f7f4; --muted:rgba(255,255,255,.64); --border:rgba(255,255,255,.14); --input:rgba(255,255,255,.08); --green:#58d34f; --blue:#4f9eff; --orange:#f59e2f; --shadow:rgba(0,0,0,.42); }
-        header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] { display:none !important; }
-        html, body, .stApp { background:var(--bg) !important; color:var(--text) !important; font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important; }
-        [data-testid="stAppViewContainer"], [data-testid="stMain"] { background:radial-gradient(circle at 85% 0%, rgba(25,145,70,.28), transparent 27%), radial-gradient(circle at 12% 10%, rgba(35,85,95,.10), transparent 23%), #000 !important; color:var(--text) !important; }
-        .block-container { max-width:1280px !important; padding:2.25rem 3rem 4rem 3rem !important; }
-        section[data-testid="stSidebar"] { display:block !important; visibility:visible !important; background:linear-gradient(180deg,var(--sidebar),#020202) !important; border-right:1px solid var(--border) !important; box-shadow:18px 0 50px rgba(0,0,0,.35); }
-        section[data-testid="stSidebar"] > div { padding:1.3rem 1rem 1.25rem 1rem !important; }
-        section[data-testid="stSidebar"] * { color:var(--text) !important; }
-        .login-container { max-width:650px; margin:0 auto; padding-top:1rem; }
-        .login-logo { width:128px; margin-bottom:2rem; }
-        .login-hero { padding:.6rem 0 1.6rem 0; margin-bottom:1.5rem; border-bottom:1px solid var(--border); }
-        .login-form-shell { max-width:520px; margin:0 auto; }
-        .login-footer { text-align:center; color:var(--muted); font-size:.84rem; margin-top:4rem; }
-        .login-container .hero-title { font-size:clamp(3rem,5vw,4.4rem) !important; }
-        .login-container .hero-subtitle { max-width:520px !important; }
-        div[data-testid="stForm"] { border:1px solid var(--border) !important; border-radius:12px !important; padding:1.35rem !important; background:rgba(0,0,0,.18) !important; }
-        div[data-testid="stForm"] input { padding-right:3.2rem !important; }
-        div[data-testid="InputInstructions"] { display:none !important; }
-        .sidebar-logo { width:120px; margin:.2rem 0 1.55rem 0; }
-        .sidebar-welcome { margin:0 0 1.1rem 0; }
-        .sidebar-welcome-label { color:var(--muted) !important; font-size:.92rem; margin-bottom:.35rem; }
-        .sidebar-name { font-size:1.1rem; font-weight:800; letter-spacing:-.02em; }
-        .sidebar-divider { height:1px; background:var(--border); margin:1.1rem 0; }
-        .sidebar-action-button { display:flex; align-items:center; gap:.85rem; width:100%; box-sizing:border-box; padding:.78rem 1rem; border-radius:10px; margin:.65rem 0; font-weight:750; border:1px solid var(--border); }
-        .scan-btn { background:linear-gradient(135deg,rgba(35,130,54,.95),rgba(22,100,46,.92)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(31,143,61,.18); }
-        .csv-btn { background:rgba(24,34,48,.78); }
-        .gd-icon { width:26px; height:26px; flex:0 0 auto; }
-        .file-icon { width:24px; height:24px; flex:0 0 auto; color:#74d7ff; }
-        .sidebar-user-card { margin-top:1.1rem; padding:.95rem; border:1px solid var(--border); border-radius:14px; background:rgba(255,255,255,.045); }
-        .sidebar-user-title { font-weight:800; margin-bottom:.2rem; }
-        .sidebar-user-role { color:var(--muted) !important; font-size:.85rem; margin-bottom:.75rem; }
-        .sidebar-status { color:var(--green) !important; font-size:.85rem; font-weight:700; }
-        .sidebar-footer-year { margin-top:.9rem; text-align:center; color:var(--muted) !important; font-size:.82rem; }
-        .eyebrow { color:var(--green); font-size:.78rem; font-weight:850; letter-spacing:.18em; text-transform:uppercase; }
-        .hero { padding:.75rem 0 2.25rem 0; margin-bottom:2.1rem; border-bottom:1px solid var(--border); background:transparent !important; }
-        .hero-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:clamp(3.1rem,5.2vw,5.25rem); line-height:1.02; font-weight:280; letter-spacing:-.067em; margin:1.15rem 0 1.2rem 0; color:var(--text); }
-        .hero-subtitle { max-width:760px; color:var(--muted); font-size:1.02rem; line-height:1.6; }
-        h1,h2,h3 { color:var(--text) !important; } h2 { font-size:1.45rem !important; } h3 { font-size:1.05rem !important; }
-        label { font-weight:650 !important; }
-        .stTabs [data-baseweb="tab-list"] { border-bottom:1px solid var(--border); gap:2rem; }
-        .stTabs [data-baseweb="tab"] { color:var(--muted) !important; font-size:.98rem !important; font-weight:650 !important; padding-left:0 !important; padding-right:0 !important; }
-        .stTabs [aria-selected="true"] { color:var(--text) !important; border-bottom:4px solid var(--green) !important; }
-        input, textarea, div[data-baseweb="input"], div[data-baseweb="select"] > div { background:var(--input) !important; color:var(--text) !important; border:1px solid var(--border) !important; border-radius:10px !important; }
-        div[data-baseweb="input"] input, div[data-baseweb="select"] * { color:var(--text) !important; }
-        .metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin:1.55rem 0 1.75rem 0; }
-        .metric-card { background:linear-gradient(145deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.2rem; min-height:100px; display:flex; align-items:center; gap:1rem; box-shadow:0 18px 42px var(--shadow); }
-        .metric-icon { width:48px; height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex:0 0 auto; }
-        .icon-blue { color:var(--blue); background:rgba(79,158,255,.16); border:1px solid rgba(79,158,255,.38); }
-        .icon-green { color:var(--green); background:rgba(88,211,79,.15); border:1px solid rgba(88,211,79,.38); }
-        .icon-orange { color:var(--orange); background:rgba(245,158,47,.15); border:1px solid rgba(245,158,47,.38); }
-        .metric-label { color:var(--muted); font-size:.72rem; font-weight:850; letter-spacing:.13em; text-transform:uppercase; }
-        .metric-value { font-size:2.3rem; line-height:1; font-weight:750; margin-top:.42rem; } .metric-green { color:var(--green); }
-        .summary-card,.action-bar,.table-shell { background:linear-gradient(145deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.25rem; margin:1.25rem 0; box-shadow:0 18px 42px var(--shadow); }
-        .summary-title { font-size:1.05rem; font-weight:800; margin-bottom:.55rem; } .summary-copy,.muted,.action-copy { color:var(--muted); line-height:1.55; } .summary-dot { color:var(--green); margin:0 .45rem; }
-        .missing-action { display:flex; justify-content:space-between; align-items:center; gap:1rem; border-color:rgba(88,211,79,.28); background:linear-gradient(145deg,rgba(14,45,19,.42),rgba(12,20,14,.78)); }
-        .missing-title { font-weight:850; font-size:1.05rem; margin-bottom:.25rem; }
-        .link-table { width:100%; border-collapse:collapse; font-size:.88rem; } .link-table th { text-align:left; color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.11em; padding:.75rem; border-bottom:1px solid var(--border); } .link-table td { padding:.75rem; border-bottom:1px solid var(--border); } .link-table a { color:var(--green) !important; font-weight:750; text-decoration:none; }
-        .status-chip { display:inline-flex; border-radius:999px; padding:.25rem .55rem; font-size:.78rem; font-weight:750; } .chip-ready,.chip-completed { color:var(--green); background:rgba(88,211,79,.12); } .chip-review { color:var(--orange); background:rgba(245,158,47,.12); } .chip-failed { color:#ff6b6b; background:rgba(255,75,75,.12); }
-        .stButton > button { border-radius:10px !important; min-height:44px !important; font-weight:780 !important; background:linear-gradient(135deg,#2fb84a,#168f3b) !important; color:#fff !important; border:1px solid rgba(88,211,79,.55) !important; } .stButton > button * { color:inherit !important; }
-        section[data-testid="stSidebar"] .stButton button { background:rgba(255,255,255,.045) !important; color:var(--text) !important; border:1px solid var(--border) !important; box-shadow:none !important; } section[data-testid="stSidebar"] .stButton button * { color:inherit !important; }
-        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] { border-radius:14px; border:1px solid var(--border); overflow:hidden; }
-        @media (max-width:1100px) { .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-        @media print { section[data-testid="stSidebar"],header,footer,.stButton,.stDownloadButton,div[role="tablist"] { display:none !important; } [data-testid="stAppViewContainer"],[data-testid="stMain"],.block-container { background:#fff !important; color:#000 !important; max-width:100% !important; padding:.45in !important; } * { color:#000 !important; box-shadow:none !important; text-shadow:none !important; } .metric-card,.summary-card,.action-bar,.table-shell { border:1px solid #bbb !important; background:#fff !important; } }
+        :root {{ --bg:{bg}; --sidebar:{sidebar}; --panel:{panel}; --panel2:{panel2}; --text:{text}; --muted:{muted}; --border:{border}; --input:{input_bg}; --green:#58d34f; --blue:#4f9eff; --orange:#f59e2f; --shadow:rgba(0,0,0,.42); }}
+        header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] {{ display:none !important; }}
+        html, body, .stApp {{ background:var(--bg) !important; color:var(--text) !important; font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important; }}
+        [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background:{app_gradient} !important; color:var(--text) !important; }}
+        .block-container {{ max-width:1280px !important; padding:2.25rem 3rem 4rem 3rem !important; }}
+        section[data-testid="stSidebar"] {{ display:block !important; visibility:visible !important; background:{sidebar_gradient} !important; border-right:1px solid var(--border) !important; box-shadow:18px 0 50px rgba(0,0,0,.25); }}
+        section[data-testid="stSidebar"] > div {{ padding:1.3rem 1rem 1.25rem 1rem !important; }}
+        section[data-testid="stSidebar"] * {{ color:var(--text) !important; }}
+        .login-container {{ max-width:650px; margin:0 auto; padding-top:1rem; }}
+        .login-logo {{ width:128px; margin-bottom:2rem; }}
+        .login-hero {{ padding:.6rem 0 1.6rem 0; margin-bottom:1.5rem; border-bottom:1px solid var(--border); }}
+        .login-form-shell {{ max-width:520px; margin:0 auto; }}
+        .login-footer {{ text-align:center; color:var(--muted); font-size:.84rem; margin-top:4rem; }}
+        .login-container .hero-title {{ font-size:clamp(3rem,5vw,4.4rem) !important; }}
+        .login-container .hero-subtitle {{ max-width:520px !important; }}
+        div[data-testid="stForm"] {{ border:1px solid var(--border) !important; border-radius:12px !important; padding:1.35rem !important; background:rgba(0,0,0,.18) !important; }}
+        div[data-testid="stForm"] input {{ padding-right:3.2rem !important; }}
+        div[data-testid="InputInstructions"] {{ display:none !important; }}
+        .sidebar-logo {{ width:120px; margin:.2rem 0 1.25rem 0; }}
+        .sidebar-welcome {{ margin:0 0 1.1rem 0; }}
+        .sidebar-welcome-label {{ color:var(--muted) !important; font-size:.94rem; margin-bottom:.25rem; }}
+        .sidebar-name {{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:1.62rem; font-weight:250; letter-spacing:-.055em; line-height:1.05; }}
+        .sidebar-divider {{ height:1px; background:var(--border); margin:1.1rem 0; }}
+        .sidebar-action-button {{ display:flex; align-items:center; gap:.85rem; width:100%; box-sizing:border-box; padding:.78rem 1rem; border-radius:10px; margin:.65rem 0; font-weight:750; border:1px solid var(--border); }}
+        .scan-btn {{ background:linear-gradient(135deg,rgba(35,130,54,.95),rgba(22,100,46,.92)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(31,143,61,.18); }}
+        .csv-btn {{ background:rgba(24,34,48,.78); }}
+        .gd-icon {{ width:26px; height:26px; flex:0 0 auto; }}
+        .file-icon {{ width:24px; height:24px; flex:0 0 auto; color:#74d7ff; }}
+        .sidebar-user-card {{ margin-top:1.1rem; padding:.95rem; border:1px solid var(--border); border-radius:14px; background:rgba(255,255,255,.045); }}
+        .sidebar-user-title {{ font-weight:800; margin-bottom:.2rem; }}
+        .sidebar-user-role {{ color:var(--muted) !important; font-size:.85rem; margin-bottom:.75rem; }}
+        .sidebar-status {{ color:var(--green) !important; font-size:.85rem; font-weight:700; }}
+        .sidebar-theme-row {{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:.85rem 0 .65rem 0; color:var(--muted) !important; }}
+        .sidebar-theme-row span {{ color:var(--muted) !important; font-size:.86rem; }}
+        .sidebar-signout-icon {{ display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,.045); margin-top:.65rem; }}
+        .power-icon {{ width:21px; height:21px; color:var(--text); }}
+        .sidebar-footer-year {{ margin-top:.9rem; text-align:center; color:var(--muted) !important; font-size:.82rem; }}
+        .eyebrow {{ color:var(--green); font-size:.78rem; font-weight:850; letter-spacing:.18em; text-transform:uppercase; }}
+        .hero {{ padding:.75rem 0 2.25rem 0; margin-bottom:2.1rem; border-bottom:1px solid var(--border); background:transparent !important; }}
+        .hero-title {{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:clamp(3.1rem,5.2vw,5.25rem); line-height:1.02; font-weight:280; letter-spacing:-.067em; margin:1.15rem 0 1.2rem 0; color:var(--text); }}
+        .hero-subtitle {{ max-width:760px; color:var(--muted); font-size:1.02rem; line-height:1.6; }}
+        h1,h2,h3 {{ color:var(--text) !important; }} h2 {{ font-size:1.45rem !important; }} h3 {{ font-size:1.05rem !important; }}
+        label {{ font-weight:650 !important; }}
+        .stTabs [data-baseweb="tab-list"] {{ border-bottom:1px solid var(--border); gap:2rem; }}
+        .stTabs [data-baseweb="tab"] {{ color:var(--muted) !important; font-size:.98rem !important; font-weight:650 !important; padding-left:0 !important; padding-right:0 !important; }}
+        .stTabs [aria-selected="true"] {{ color:var(--text) !important; border-bottom:4px solid var(--green) !important; }}
+        input, textarea, div[data-baseweb="input"], div[data-baseweb="select"] > div {{ background:var(--input) !important; color:var(--text) !important; border:1px solid var(--border) !important; border-radius:10px !important; }}
+        div[data-baseweb="input"] input, div[data-baseweb="select"] * {{ color:var(--text) !important; }}
+        .metric-grid {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin:1.55rem 0 1.75rem 0; }}
+        .metric-card {{ background:linear-gradient(145deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.2rem; min-height:100px; display:flex; align-items:center; gap:1rem; box-shadow:0 18px 42px var(--shadow); }}
+        .metric-icon {{ width:48px; height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex:0 0 auto; }}
+        .icon-blue {{ color:var(--blue); background:rgba(79,158,255,.16); border:1px solid rgba(79,158,255,.38); }}
+        .icon-green {{ color:var(--green); background:rgba(88,211,79,.15); border:1px solid rgba(88,211,79,.38); }}
+        .icon-orange {{ color:var(--orange); background:rgba(245,158,47,.15); border:1px solid rgba(245,158,47,.38); }}
+        .metric-label {{ color:var(--muted); font-size:.72rem; font-weight:850; letter-spacing:.13em; text-transform:uppercase; }}
+        .metric-value {{ font-size:2.3rem; line-height:1; font-weight:750; margin-top:.42rem; }} .metric-green {{ color:var(--green); }}
+        .summary-card,.action-bar,.table-shell {{ background:linear-gradient(145deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.25rem; margin:1.25rem 0; box-shadow:0 18px 42px var(--shadow); }}
+        .summary-title {{ font-size:1.05rem; font-weight:800; margin-bottom:.55rem; }} .summary-copy,.muted,.action-copy {{ color:var(--muted); line-height:1.55; }} .summary-dot {{ color:var(--green); margin:0 .45rem; }}
+        .missing-action {{ display:flex; justify-content:space-between; align-items:center; gap:1rem; border-color:rgba(88,211,79,.28); background:linear-gradient(145deg,rgba(14,45,19,.42),rgba(12,20,14,.78)); }}
+        .missing-title {{ font-weight:850; font-size:1.05rem; margin-bottom:.25rem; }}
+        .link-table {{ width:100%; border-collapse:collapse; font-size:.88rem; }} .link-table th {{ text-align:left; color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.11em; padding:.75rem; border-bottom:1px solid var(--border); }} .link-table td {{ padding:.75rem; border-bottom:1px solid var(--border); }} .link-table a {{ color:var(--green) !important; font-weight:750; text-decoration:none; }}
+        .status-chip {{ display:inline-flex; border-radius:999px; padding:.25rem .55rem; font-size:.78rem; font-weight:750; }} .chip-ready,.chip-completed {{ color:var(--green); background:rgba(88,211,79,.12); }} .chip-review {{ color:var(--orange); background:rgba(245,158,47,.12); }} .chip-failed {{ color:#ff6b6b; background:rgba(255,75,75,.12); }}
+        .stButton > button {{ border-radius:10px !important; min-height:44px !important; font-weight:780 !important; background:linear-gradient(135deg,#2fb84a,#168f3b) !important; color:#fff !important; border:1px solid rgba(88,211,79,.55) !important; }} .stButton > button * {{ color:inherit !important; }}
+        section[data-testid="stSidebar"] .stButton button {{ background:rgba(255,255,255,.045) !important; color:var(--text) !important; border:1px solid var(--border) !important; box-shadow:none !important; }} section[data-testid="stSidebar"] .stButton button * {{ color:inherit !important; }}
+        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{ border-radius:14px; border:1px solid var(--border); overflow:hidden; }}
+        @media (max-width:1100px) {{ .metric-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
+        @media print {{ section[data-testid="stSidebar"],header,footer,.stButton,.stDownloadButton,div[role="tablist"] {{ display:none !important; }} [data-testid="stAppViewContainer"],[data-testid="stMain"],.block-container {{ background:#fff !important; color:#000 !important; max-width:100% !important; padding:.45in !important; }} * {{ color:#000 !important; box-shadow:none !important; text-shadow:none !important; }} .metric-card,.summary-card,.action-bar,.table-shell {{ border:1px solid #bbb !important; background:#fff !important; }} }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -179,7 +216,7 @@ def render_sidebar_controls():
     st.sidebar.markdown(f"""
     {logo_html}
     <div class="sidebar-welcome">
-        <div class="sidebar-welcome-label">Welcome back</div>
+        <div class="sidebar-welcome-label">Welcome back,</div>
         <div class="sidebar-name">Vergo Admin</div>
     </div>
     """, unsafe_allow_html=True)
@@ -200,13 +237,21 @@ def render_sidebar_controls():
     st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     st.sidebar.markdown('''
     <div class="sidebar-user-card">
-        <div class="sidebar-user-title">Admin User</div>
-        <div class="sidebar-user-role">Administrator</div>
+        <div class="sidebar-user-title">Administrator</div>
         <div class="sidebar-status">● Online</div>
     </div>
     ''', unsafe_allow_html=True)
-    st.session_state.vergo_dark_mode = st.sidebar.toggle("Dark mode", value=st.session_state.get("vergo_dark_mode", True), key="dark_mode_bottom_toggle")
-    if st.sidebar.button("↪  Sign out", key="real_logout_button", use_container_width=True):
+
+    st.sidebar.markdown('<div class="sidebar-theme-row"><span>☼ Light</span><span>Dark ☾</span></div>', unsafe_allow_html=True)
+    previous_mode = st.session_state.get("vergo_dark_mode", True)
+    new_mode = st.sidebar.toggle("Dark mode", value=previous_mode, key="dark_mode_bottom_toggle", label_visibility="collapsed")
+    if new_mode != previous_mode:
+        st.session_state.vergo_dark_mode = new_mode
+        st.rerun()
+    st.session_state.vergo_dark_mode = new_mode
+
+    st.sidebar.markdown(f'<div class="sidebar-signout-icon">{power_icon_svg()}</div>', unsafe_allow_html=True)
+    if st.sidebar.button("Sign out", key="real_logout_button", use_container_width=True):
         st.session_state["vergo_admin_authenticated"] = False
         st.rerun()
     st.sidebar.markdown(f'<div class="sidebar-footer-year">© {datetime.now().year} Vergo. All rights reserved.</div>', unsafe_allow_html=True)
