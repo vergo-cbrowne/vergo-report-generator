@@ -3,6 +3,7 @@ import hmac
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -171,6 +172,35 @@ def apply_vergo_theme():
 
 
 def require_admin_login():
+    st.markdown("""
+    <style id="VERGO_LOGIN_FIX">
+    section[data-testid="stSidebar"] {
+        display: none !important;
+    }
+
+    .block-container {
+        max-width: 760px !important;
+        padding-top: 3rem !important;
+    }
+
+    div[data-testid="stForm"] {
+        max-width: 560px !important;
+        margin: 2rem auto 0 auto !important;
+        border: 1px solid rgba(255,255,255,0.16) !important;
+        border-radius: 12px !important;
+        padding: 1.4rem !important;
+        background: rgba(0,0,0,0.18) !important;
+    }
+
+    .vergo-login-footer {
+        text-align: center;
+        color: rgba(255,255,255,0.58);
+        font-size: 0.85rem;
+        margin-top: 4rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     admin_user = os.environ.get("VERGO_ADMIN_USER", "")
     admin_password = os.environ.get("VERGO_ADMIN_PASSWORD", "")
     if not admin_user or not admin_password:
@@ -191,6 +221,11 @@ def require_admin_login():
             st.session_state["vergo_admin_authenticated"] = True
             st.rerun()
         st.error("Invalid username or password.")
+    st.markdown(
+        f'<div class="vergo-login-footer">© {datetime.now().year} Vergo. All rights reserved.</div>',
+        unsafe_allow_html=True,
+    )
+
     st.stop()
 
 
