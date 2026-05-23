@@ -10,6 +10,7 @@ import pandas as pd
 import streamlit as st
 
 import drive_scanner
+
 try:
     from completion_tracker import render_client_completion_tracker_page
 except Exception:
@@ -35,7 +36,7 @@ def image_to_base64(path: str) -> str:
 
 def google_drive_svg() -> str:
     return """
-    <svg class="btn-icon" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg class="gd-icon" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M6.6 66.8l3.8 6.6c.8 1.4 2 2.5 3.4 3.3l13.7-23.8H0c0 1.5.4 3 1.2 4.4l5.4 9.5z" fill="#0066da"/>
       <path d="M43.7 25.1L30 1.3c-1.4.8-2.6 1.9-3.4 3.3L1.2 48.7C.4 50.1 0 51.6 0 53h27.5l16.2-27.9z" fill="#00ac47"/>
       <path d="M73.5 76.7c1.4-.8 2.6-1.9 3.4-3.3l1.6-2.7 7.6-13.3c.8-1.4 1.2-2.9 1.2-4.4H59.8l5.8 11.4 7.9 12.3z" fill="#ea4335"/>
@@ -59,147 +60,73 @@ def load_local_env_file():
 
 
 def apply_vergo_theme():
-    if "vergo_dark_mode" not in st.session_state:
-        st.session_state.vergo_dark_mode = True
-
-    dark = bool(st.session_state.vergo_dark_mode)
-    bg = "#000000" if dark else "#f6f7f2"
-    sidebar = "#050505" if dark else "#ffffff"
-    panel = "rgba(18,18,18,0.88)" if dark else "#ffffff"
-    panel2 = "rgba(26,26,26,0.78)" if dark else "#f1f2ee"
-    text = "#f7f7f4" if dark else "#101010"
-    muted = "rgba(255,255,255,0.66)" if dark else "rgba(0,0,0,0.62)"
-    border = "rgba(255,255,255,0.14)" if dark else "rgba(0,0,0,0.14)"
-    input_bg = "rgba(255,255,255,0.08)" if dark else "#ffffff"
-
     st.markdown(
-        f"""
+        """
         <style>
         @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
-
-        :root {{
-            --bg: {bg}; --sidebar: {sidebar}; --panel: {panel}; --panel2: {panel2};
-            --text: {text}; --muted: {muted}; --border: {border}; --input: {input_bg};
-            --green: #58d34f; --green2: #1f8f3d; --blue: #4f9eff; --orange: #f59e2f;
-            --red: #ff5f5f; --shadow: rgba(0,0,0,0.42);
-        }}
-
-        header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] {{ display: none !important; }}
-        html, body, .stApp {{ background: var(--bg) !important; color: var(--text) !important; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; }}
-        [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-            background:
-                radial-gradient(circle at 85% 0%, rgba(25, 145, 70, 0.34), transparent 27%),
-                radial-gradient(circle at 12% 10%, rgba(35, 85, 95, 0.12), transparent 23%),
-                #000000 !important;
-            color: var(--text) !important;
-        }}
-        .block-container {{ max-width: 1280px !important; padding: 2.25rem 3rem 4rem 3rem !important; }}
-        section[data-testid="stSidebar"] {{ background: linear-gradient(180deg, var(--sidebar), #020202) !important; border-right: 1px solid var(--border) !important; box-shadow: 18px 0 50px rgba(0,0,0,0.35); }}
-        section[data-testid="stSidebar"] > div {{ padding: 1.3rem 1rem 1.25rem 1rem !important; }}
-        section[data-testid="stSidebar"] * {{ color: var(--text) !important; }}
-
-        .sidebar-logo {{ width: 120px; margin: 0.2rem 0 1.85rem 0; }}
-        .sidebar-collapse {{ position:absolute; right:1rem; top:1.5rem; color:var(--muted); font-size:1.35rem; }}
-        .sidebar-welcome {{ margin: 0 0 1.2rem 0; }}
-        .sidebar-welcome-label {{ color: var(--muted); font-size: 0.92rem; margin-bottom: 0.35rem; }}
-        .sidebar-name {{ font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; }}
-        .sidebar-divider {{ height: 1px; background: var(--border); margin: 1.35rem 0; }}
-        .sidebar-action-button {{
-            display:flex; align-items:center; gap:0.85rem; width:100%; box-sizing:border-box;
-            padding: 0.78rem 1rem; border-radius: 10px; text-decoration:none; margin: 0.7rem 0;
-            font-weight: 750; border:1px solid var(--border);
-        }}
-        .scan-btn {{ background: linear-gradient(135deg, rgba(35,130,54,0.95), rgba(22,100,46,0.92)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 30px rgba(31,143,61,0.18); }}
-        .csv-btn {{ background: rgba(24,34,48,0.78); }}
-        .btn-icon {{ width: 26px; height: 26px; flex: 0 0 auto; }}
-        .file-icon {{ width: 24px; height: 24px; flex:0 0 auto; color:#74d7ff; }}
-
-        .theme-row {{ display:flex; align-items:center; justify-content:space-between; margin:1.1rem 0 0.8rem 0; color:var(--muted); font-size:0.9rem; }}
-        .logout-faux {{
-            display:flex; align-items:center; justify-content:center; gap:0.65rem; width:100%; box-sizing:border-box;
-            min-height:46px; border-radius:10px; border:1px solid var(--border); background: rgba(255,255,255,0.045);
-            color: var(--text); font-weight:750; margin-top:0.75rem;
-        }}
-        .sidebar-bottom-space {{ height: 0.7rem; }}
-
-        .top-logo {{ width: 122px; margin: 0.25rem 0 1.3rem 0; }}
-        .eyebrow {{ color: var(--green); font-size: 0.78rem; font-weight: 850; letter-spacing: 0.18em; text-transform: uppercase; }}
-        .hero {{ padding: 0.75rem 0 2.25rem 0; margin-bottom: 2.1rem; border-bottom: 1px solid var(--border); background: transparent !important; }}
-        .hero-title {{
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-            font-size: clamp(3.1rem, 5.2vw, 5.25rem); line-height: 1.02; font-weight: 280;
-            letter-spacing: -0.067em; margin: 1.15rem 0 1.2rem 0; color: var(--text);
-        }}
-        .hero-subtitle {{ max-width: 760px; color: var(--muted); font-size: 1.02rem; line-height: 1.6; }}
-
-        h1,h2,h3 {{ color: var(--text) !important; }} h2 {{ font-size: 1.45rem !important; }} h3 {{ font-size: 1.05rem !important; }}
-        label {{ font-weight: 650 !important; }}
-        .stTabs [data-baseweb="tab-list"] {{ border-bottom: 1px solid var(--border); gap: 2rem; }}
-        .stTabs [data-baseweb="tab"] {{ color: var(--muted) !important; font-size: 0.98rem !important; font-weight: 650 !important; padding-left:0 !important; padding-right:0 !important; }}
-        .stTabs [aria-selected="true"] {{ color: var(--text) !important; border-bottom: 4px solid var(--green) !important; }}
-
-        input, textarea, div[data-baseweb="input"], div[data-baseweb="select"] > div {{ background: var(--input) !important; color: var(--text) !important; border: 1px solid var(--border) !important; border-radius: 10px !important; }}
-        div[data-baseweb="input"] input, div[data-baseweb="select"] * {{ color: var(--text) !important; }}
-
-        .metric-grid {{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:1rem; margin:1.55rem 0 1.75rem 0; }}
-        .metric-card {{ background: linear-gradient(145deg, var(--panel), var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.2rem; min-height:100px; display:flex; align-items:center; gap:1rem; box-shadow: 0 18px 42px var(--shadow); }}
-        .metric-icon {{ width:48px; height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex:0 0 auto; }}
-        .icon-blue {{ color:var(--blue); background:rgba(79,158,255,0.16); border:1px solid rgba(79,158,255,0.38); }}
-        .icon-green {{ color:var(--green); background:rgba(88,211,79,0.15); border:1px solid rgba(88,211,79,0.38); }}
-        .icon-orange {{ color:var(--orange); background:rgba(245,158,47,0.15); border:1px solid rgba(245,158,47,0.38); }}
-        .metric-label {{ color: var(--muted); font-size:0.72rem; font-weight:850; letter-spacing:0.13em; text-transform:uppercase; }}
-        .metric-value {{ font-size:2.3rem; line-height:1; font-weight:750; margin-top:0.42rem; }} .metric-green {{ color:var(--green); }}
-
-        .summary-card, .action-bar, .table-shell {{ background: linear-gradient(145deg, var(--panel), var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.25rem; margin:1.25rem 0; box-shadow: 0 18px 42px var(--shadow); }}
-        .summary-title {{ font-size:1.05rem; font-weight:800; margin-bottom:0.55rem; }} .summary-copy,.muted,.action-copy {{ color:var(--muted); line-height:1.55; }} .summary-dot {{ color:var(--green); margin:0 0.45rem; }}
-        .missing-action {{ display:flex; justify-content:space-between; align-items:center; gap:1rem; border-color:rgba(88,211,79,0.28); background:linear-gradient(145deg, rgba(14,45,19,0.42), rgba(12,20,14,0.78)); }}
-        .missing-title {{ font-weight:850; font-size:1.05rem; margin-bottom:0.25rem; }}
-
-        .link-table {{ width:100%; border-collapse:collapse; font-size:0.88rem; }} .link-table th {{ text-align:left; color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.11em; padding:0.75rem; border-bottom:1px solid var(--border); }} .link-table td {{ padding:0.75rem; border-bottom:1px solid var(--border); }} .link-table a {{ color:var(--green) !important; font-weight:750; text-decoration:none; }}
-        .status-chip {{ display:inline-flex; border-radius:999px; padding:0.25rem 0.55rem; font-size:0.78rem; font-weight:750; }} .chip-ready,.chip-completed {{ color:var(--green); background:rgba(88,211,79,0.12); }} .chip-review {{ color:var(--orange); background:rgba(245,158,47,0.12); }} .chip-failed {{ color:#ff6b6b; background:rgba(255,75,75,0.12); }}
-
-        .stButton > button {{ border-radius:10px !important; min-height:44px !important; font-weight:780 !important; background:linear-gradient(135deg,#2fb84a,#168f3b) !important; color:#fff !important; border:1px solid rgba(88,211,79,0.55) !important; }} .stButton > button * {{ color:inherit !important; }}
-        section[data-testid="stSidebar"] .stButton button {{ background: rgba(255,255,255,0.045) !important; color: var(--text) !important; border: 1px solid var(--border) !important; box-shadow:none !important; }}
-        section[data-testid="stSidebar"] .stButton button * {{ color:inherit !important; }}
-
-        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{ border-radius:14px; border:1px solid var(--border); overflow:hidden; }}
-        @media (max-width:1100px) {{ .metric-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
-        @media print {{ section[data-testid="stSidebar"], header, footer, .stButton, .stDownloadButton, div[role="tablist"] {{ display:none !important; }} [data-testid="stAppViewContainer"], [data-testid="stMain"], .block-container {{ background:#fff !important; color:#000 !important; max-width:100% !important; padding:0.45in !important; }} * {{ color:#000 !important; box-shadow:none !important; text-shadow:none !important; }} .metric-card,.summary-card,.action-bar,.table-shell {{ border:1px solid #bbb !important; background:#fff !important; }} }}
-
-        .sidebar-user-card {{
-            margin-top: 1.2rem;
-            padding: 1rem;
-            border: 1px solid rgba(255,255,255,0.14);
-            border-radius: 14px;
-            background: rgba(255,255,255,0.045);
-        }}
-        .sidebar-user-title {{
-            font-weight: 800;
-            margin-bottom: 0.2rem;
-        }}
-        .sidebar-user-role {{
-            color: rgba(255,255,255,0.62);
-            font-size: 0.85rem;
-            margin-bottom: 0.75rem;
-        }}
-        .sidebar-status {{
-            color: #58d34f;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }}
-        .sidebar-footer-year {{
-            margin-top: 1rem;
-            text-align: center;
-            color: rgba(255,255,255,0.58);
-            font-size: 0.82rem;
-        }}
-        
-        input[type="password"] {
-            padding-right: 3.2rem !important;
-        }
-        div[data-testid="InputInstructions"] {
-            display: none !important;
-        }
+        :root { --bg:#000000; --sidebar:#050505; --panel:rgba(18,18,18,.9); --panel2:rgba(28,28,28,.82); --text:#f7f7f4; --muted:rgba(255,255,255,.64); --border:rgba(255,255,255,.14); --input:rgba(255,255,255,.08); --green:#58d34f; --blue:#4f9eff; --orange:#f59e2f; --shadow:rgba(0,0,0,.42); }
+        header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] { display:none !important; }
+        html, body, .stApp { background:var(--bg) !important; color:var(--text) !important; font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important; }
+        [data-testid="stAppViewContainer"], [data-testid="stMain"] { background:radial-gradient(circle at 85% 0%, rgba(25,145,70,.28), transparent 27%), radial-gradient(circle at 12% 10%, rgba(35,85,95,.10), transparent 23%), #000 !important; color:var(--text) !important; }
+        .block-container { max-width:1280px !important; padding:2.25rem 3rem 4rem 3rem !important; }
+        section[data-testid="stSidebar"] { display:block !important; visibility:visible !important; background:linear-gradient(180deg,var(--sidebar),#020202) !important; border-right:1px solid var(--border) !important; box-shadow:18px 0 50px rgba(0,0,0,.35); }
+        section[data-testid="stSidebar"] > div { padding:1.3rem 1rem 1.25rem 1rem !important; }
+        section[data-testid="stSidebar"] * { color:var(--text) !important; }
+        .login-container { max-width:650px; margin:0 auto; padding-top:1rem; }
+        .login-logo { width:128px; margin-bottom:2rem; }
+        .login-hero { padding:.6rem 0 1.6rem 0; margin-bottom:1.5rem; border-bottom:1px solid var(--border); }
+        .login-form-shell { max-width:520px; margin:0 auto; }
+        .login-footer { text-align:center; color:var(--muted); font-size:.84rem; margin-top:4rem; }
+        .login-container .hero-title { font-size:clamp(3rem,5vw,4.4rem) !important; }
+        .login-container .hero-subtitle { max-width:520px !important; }
+        div[data-testid="stForm"] { border:1px solid var(--border) !important; border-radius:12px !important; padding:1.35rem !important; background:rgba(0,0,0,.18) !important; }
+        div[data-testid="stForm"] input { padding-right:3.2rem !important; }
+        div[data-testid="InputInstructions"] { display:none !important; }
+        .sidebar-logo { width:120px; margin:.2rem 0 1.55rem 0; }
+        .sidebar-welcome { margin:0 0 1.1rem 0; }
+        .sidebar-welcome-label { color:var(--muted) !important; font-size:.92rem; margin-bottom:.35rem; }
+        .sidebar-name { font-size:1.1rem; font-weight:800; letter-spacing:-.02em; }
+        .sidebar-divider { height:1px; background:var(--border); margin:1.1rem 0; }
+        .sidebar-action-button { display:flex; align-items:center; gap:.85rem; width:100%; box-sizing:border-box; padding:.78rem 1rem; border-radius:10px; margin:.65rem 0; font-weight:750; border:1px solid var(--border); }
+        .scan-btn { background:linear-gradient(135deg,rgba(35,130,54,.95),rgba(22,100,46,.92)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(31,143,61,.18); }
+        .csv-btn { background:rgba(24,34,48,.78); }
+        .gd-icon { width:26px; height:26px; flex:0 0 auto; }
+        .file-icon { width:24px; height:24px; flex:0 0 auto; color:#74d7ff; }
+        .sidebar-user-card { margin-top:1.1rem; padding:.95rem; border:1px solid var(--border); border-radius:14px; background:rgba(255,255,255,.045); }
+        .sidebar-user-title { font-weight:800; margin-bottom:.2rem; }
+        .sidebar-user-role { color:var(--muted) !important; font-size:.85rem; margin-bottom:.75rem; }
+        .sidebar-status { color:var(--green) !important; font-size:.85rem; font-weight:700; }
+        .sidebar-footer-year { margin-top:.9rem; text-align:center; color:var(--muted) !important; font-size:.82rem; }
+        .eyebrow { color:var(--green); font-size:.78rem; font-weight:850; letter-spacing:.18em; text-transform:uppercase; }
+        .hero { padding:.75rem 0 2.25rem 0; margin-bottom:2.1rem; border-bottom:1px solid var(--border); background:transparent !important; }
+        .hero-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:clamp(3.1rem,5.2vw,5.25rem); line-height:1.02; font-weight:280; letter-spacing:-.067em; margin:1.15rem 0 1.2rem 0; color:var(--text); }
+        .hero-subtitle { max-width:760px; color:var(--muted); font-size:1.02rem; line-height:1.6; }
+        h1,h2,h3 { color:var(--text) !important; } h2 { font-size:1.45rem !important; } h3 { font-size:1.05rem !important; }
+        label { font-weight:650 !important; }
+        .stTabs [data-baseweb="tab-list"] { border-bottom:1px solid var(--border); gap:2rem; }
+        .stTabs [data-baseweb="tab"] { color:var(--muted) !important; font-size:.98rem !important; font-weight:650 !important; padding-left:0 !important; padding-right:0 !important; }
+        .stTabs [aria-selected="true"] { color:var(--text) !important; border-bottom:4px solid var(--green) !important; }
+        input, textarea, div[data-baseweb="input"], div[data-baseweb="select"] > div { background:var(--input) !important; color:var(--text) !important; border:1px solid var(--border) !important; border-radius:10px !important; }
+        div[data-baseweb="input"] input, div[data-baseweb="select"] * { color:var(--text) !important; }
+        .metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin:1.55rem 0 1.75rem 0; }
+        .metric-card { background:linear-gradient(145deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.2rem; min-height:100px; display:flex; align-items:center; gap:1rem; box-shadow:0 18px 42px var(--shadow); }
+        .metric-icon { width:48px; height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex:0 0 auto; }
+        .icon-blue { color:var(--blue); background:rgba(79,158,255,.16); border:1px solid rgba(79,158,255,.38); }
+        .icon-green { color:var(--green); background:rgba(88,211,79,.15); border:1px solid rgba(88,211,79,.38); }
+        .icon-orange { color:var(--orange); background:rgba(245,158,47,.15); border:1px solid rgba(245,158,47,.38); }
+        .metric-label { color:var(--muted); font-size:.72rem; font-weight:850; letter-spacing:.13em; text-transform:uppercase; }
+        .metric-value { font-size:2.3rem; line-height:1; font-weight:750; margin-top:.42rem; } .metric-green { color:var(--green); }
+        .summary-card,.action-bar,.table-shell { background:linear-gradient(145deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; padding:1.25rem; margin:1.25rem 0; box-shadow:0 18px 42px var(--shadow); }
+        .summary-title { font-size:1.05rem; font-weight:800; margin-bottom:.55rem; } .summary-copy,.muted,.action-copy { color:var(--muted); line-height:1.55; } .summary-dot { color:var(--green); margin:0 .45rem; }
+        .missing-action { display:flex; justify-content:space-between; align-items:center; gap:1rem; border-color:rgba(88,211,79,.28); background:linear-gradient(145deg,rgba(14,45,19,.42),rgba(12,20,14,.78)); }
+        .missing-title { font-weight:850; font-size:1.05rem; margin-bottom:.25rem; }
+        .link-table { width:100%; border-collapse:collapse; font-size:.88rem; } .link-table th { text-align:left; color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.11em; padding:.75rem; border-bottom:1px solid var(--border); } .link-table td { padding:.75rem; border-bottom:1px solid var(--border); } .link-table a { color:var(--green) !important; font-weight:750; text-decoration:none; }
+        .status-chip { display:inline-flex; border-radius:999px; padding:.25rem .55rem; font-size:.78rem; font-weight:750; } .chip-ready,.chip-completed { color:var(--green); background:rgba(88,211,79,.12); } .chip-review { color:var(--orange); background:rgba(245,158,47,.12); } .chip-failed { color:#ff6b6b; background:rgba(255,75,75,.12); }
+        .stButton > button { border-radius:10px !important; min-height:44px !important; font-weight:780 !important; background:linear-gradient(135deg,#2fb84a,#168f3b) !important; color:#fff !important; border:1px solid rgba(88,211,79,.55) !important; } .stButton > button * { color:inherit !important; }
+        section[data-testid="stSidebar"] .stButton button { background:rgba(255,255,255,.045) !important; color:var(--text) !important; border:1px solid var(--border) !important; box-shadow:none !important; } section[data-testid="stSidebar"] .stButton button * { color:inherit !important; }
+        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] { border-radius:14px; border:1px solid var(--border); overflow:hidden; }
+        @media (max-width:1100px) { .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media print { section[data-testid="stSidebar"],header,footer,.stButton,.stDownloadButton,div[role="tablist"] { display:none !important; } [data-testid="stAppViewContainer"],[data-testid="stMain"],.block-container { background:#fff !important; color:#000 !important; max-width:100% !important; padding:.45in !important; } * { color:#000 !important; box-shadow:none !important; text-shadow:none !important; } .metric-card,.summary-card,.action-bar,.table-shell { border:1px solid #bbb !important; background:#fff !important; } }
         </style>
         """,
         unsafe_allow_html=True,
@@ -207,86 +134,59 @@ def apply_vergo_theme():
 
 
 def require_admin_login():
-    if st.session_state.get("vergo_admin_authenticated") is True:
-        return
-
-    st.markdown("""
-    <style id="VERGO_LOGIN_FIX">
-    section[data-testid="stSidebar"] {
-        display: none !important;
-    }
-
-    .block-container {
-        max-width: 760px !important;
-        padding-top: 3rem !important;
-    }
-
-    div[data-testid="stForm"] {
-        max-width: 560px !important;
-        margin: 2rem auto 0 auto !important;
-        border: 1px solid rgba(255,255,255,0.16) !important;
-        border-radius: 12px !important;
-        padding: 1.4rem !important;
-        background: rgba(0,0,0,0.18) !important;
-    }
-
-    .vergo-login-footer {
-        text-align: center;
-        color: rgba(255,255,255,0.58);
-        font-size: 0.85rem;
-        margin-top: 4rem;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     admin_user = os.environ.get("VERGO_ADMIN_USER", "")
     admin_password = os.environ.get("VERGO_ADMIN_PASSWORD", "")
     if not admin_user or not admin_password:
         st.error("Admin login is not configured. Set VERGO_ADMIN_USER and VERGO_ADMIN_PASSWORD in .env.")
         st.stop()
+    if st.session_state.get("vergo_admin_authenticated") is True:
+        return
+
+    year = datetime.now().year
     logo_b64 = image_to_base64(LOGO_PATH)
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="top-logo" />' if logo_b64 else ""
-    st.markdown(f"""{logo_html}<div class="hero"><div class="eyebrow">Secure Access</div><div class="hero-title">Vergo Admin Login</div><div class="hero-subtitle">Sign in to access the report operations dashboard.</div></div>""", unsafe_allow_html=True)
+    logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="login-logo" />' if logo_b64 else ""
+    st.markdown(f"""
+    <div class="login-container">
+        {logo_html}
+        <div class="login-hero">
+            <div class="eyebrow">Secure Access</div>
+            <div class="hero-title">Vergo Admin Login</div>
+            <div class="hero-subtitle">Sign in to access the report operations dashboard.</div>
+        </div>
+        <div class="login-form-shell">
+    """, unsafe_allow_html=True)
     with st.form("vergo_admin_login_form"):
         st.markdown("### Sign in")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Sign in", use_container_width=True)
+    st.markdown(f"""
+        </div>
+        <div class="login-footer">© {year} Vergo. All rights reserved.</div>
+    </div>
+    """, unsafe_allow_html=True)
     if submitted:
         if hmac.compare_digest(username.strip().lower(), admin_user.strip().lower()) and hmac.compare_digest(password, admin_password):
             st.session_state["vergo_admin_authenticated"] = True
             st.rerun()
         st.error("Invalid username or password.")
-    st.markdown(
-        f'<div class="vergo-login-footer">© {datetime.now().year} Vergo. All rights reserved.</div>',
-        unsafe_allow_html=True,
-    )
-
     st.stop()
 
 
 def render_sidebar_controls():
-    st.markdown("""
-    <style id="VERGO_FORCE_SIDEBAR_VISIBLE">
-    section[data-testid="stSidebar"] {
-        display: block !important;
-        visibility: visible !important;
-    }
-    .block-container {
-        max-width: 1280px !important;
-        padding: 2.25rem 3rem 4rem 3rem !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     logo_b64 = image_to_base64(LOGO_PATH)
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="sidebar-logo" />' if logo_b64 else ""
-    st.sidebar.markdown(f'{logo_html}<div class="sidebar-collapse">«</div><div class="sidebar-welcome"><div class="sidebar-welcome-label">Welcome back</div><div class="sidebar-name">Vergo Admin</div></div>', unsafe_allow_html=True)
+    st.sidebar.markdown(f"""
+    {logo_html}
+    <div class="sidebar-welcome">
+        <div class="sidebar-welcome-label">Welcome back</div>
+        <div class="sidebar-name">Vergo Admin</div>
+    </div>
+    """, unsafe_allow_html=True)
     st.sidebar.markdown(f'<div class="sidebar-action-button scan-btn">{google_drive_svg()}<span>Scan Google Drive</span></div>', unsafe_allow_html=True)
-    scan_clicked = st.sidebar.button("Scan Google Drive", key="scan_drive_hidden", use_container_width=True)
-    st.sidebar.markdown('<style>button[kind="secondary"][data-testid="baseButton-secondary"]:has(div p:contains("Scan Google Drive")){display:none}</style>', unsafe_allow_html=True)
+    scan_clicked = st.sidebar.button("Scan Google Drive", key="scan_drive_button", use_container_width=True)
     st.sidebar.markdown('<div class="sidebar-action-button csv-btn"><svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Load existing scan CSV</span></div>', unsafe_allow_html=True)
-    load_existing_clicked = st.sidebar.button("Load existing scan CSV", key="load_csv_hidden", use_container_width=True)
+    load_existing_clicked = st.sidebar.button("Load existing scan CSV", key="load_csv_button", use_container_width=True)
 
     st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     st.sidebar.header("Configuration")
@@ -296,32 +196,20 @@ def render_sidebar_controls():
     model = st.sidebar.text_input("OpenAI model", DEFAULT_MODEL)
     full_scan = st.sidebar.checkbox("Full Drive scan", value=False, help="Leave off for faster testing. Turn on when you want to scan everything.")
     assessment_date_required = st.sidebar.checkbox("Require assessment date", value=False, help="If off, missing assessment dates are not treated as a review warning.")
+
     st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-    st.sidebar.markdown(
-        '''
-        <div class="sidebar-user-card">
-            <div class="sidebar-user-title">Admin User</div>
-            <div class="sidebar-user-role">Administrator</div>
-            <div class="sidebar-status">● Online</div>
-        </div>
-        ''',
-        unsafe_allow_html=True,
-    )
-
-    st.session_state.vergo_dark_mode = st.sidebar.toggle(
-        "Dark mode",
-        value=st.session_state.get("vergo_dark_mode", True),
-        key="dark_mode_bottom_toggle",
-    )
-
+    st.sidebar.markdown('''
+    <div class="sidebar-user-card">
+        <div class="sidebar-user-title">Admin User</div>
+        <div class="sidebar-user-role">Administrator</div>
+        <div class="sidebar-status">● Online</div>
+    </div>
+    ''', unsafe_allow_html=True)
+    st.session_state.vergo_dark_mode = st.sidebar.toggle("Dark mode", value=st.session_state.get("vergo_dark_mode", True), key="dark_mode_bottom_toggle")
     if st.sidebar.button("↪  Sign out", key="real_logout_button", use_container_width=True):
         st.session_state["vergo_admin_authenticated"] = False
         st.rerun()
-
-    st.sidebar.markdown(
-        f'<div class="sidebar-footer-year">© {datetime.now().year} Vergo. All rights reserved.</div>',
-        unsafe_allow_html=True,
-    )
+    st.sidebar.markdown(f'<div class="sidebar-footer-year">© {datetime.now().year} Vergo. All rights reserved.</div>', unsafe_allow_html=True)
     return credentials_path, root_folder_id, prompt_path, model, full_scan, assessment_date_required, scan_clicked, load_existing_clicked
 
 
