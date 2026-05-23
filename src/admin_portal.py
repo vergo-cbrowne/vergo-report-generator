@@ -106,7 +106,7 @@ def apply_vergo_theme():
         header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] {{ display:none !important; }}
         html, body, .stApp {{ background:var(--bg) !important; color:var(--text) !important; font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important; }}
         [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background:{app_gradient} !important; color:var(--text) !important; }}
-        [data-testid="collapsedControl"] { display: none !important; }
+        [data-testid="collapsedControl"] {{ display: none !important; }}
         .block-container {{ max-width:1280px !important; padding:2.25rem 3rem 4rem 3rem !important; }}
         section[data-testid="stSidebar"] {{ display:block !important; visibility:visible !important; background:{sidebar_gradient} !important; border-right:1px solid var(--border) !important; box-shadow:18px 0 50px rgba(0,0,0,.25); }}
         section[data-testid="stSidebar"] > div {{ padding:1.3rem 1rem 1.25rem 1rem !important; }}
