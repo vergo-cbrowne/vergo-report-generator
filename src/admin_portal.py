@@ -534,7 +534,9 @@ def main():
             import time
 
             progress_card = st.container()
-            progress_bar = st.progress(0)
+            progress_area = st.container()
+            with progress_area:
+                progress_bar = st.progress(0)
             status_line = st.empty()
             eta_line = st.empty()
 
@@ -573,11 +575,20 @@ def main():
 
                 all_logs.append(f"--- Folder {index}: {folder_id} ---\n{returncode=}\n{output}")
 
-                if returncode != 0:
-                    failed_count += 1
+                folder_failed = False
 
                 if one_summary is not None and not one_summary.empty:
                     all_summaries.append(one_summary)
+
+                    if "success" in one_summary.columns:
+                        folder_failed = not one_summary["success"].astype(str).str.lower().eq("true").any()
+                    else:
+                        folder_failed = returncode != 0
+                else:
+                    folder_failed = returncode != 0
+
+                if folder_failed:
+                    failed_count += 1
 
                 progress_bar.progress(index / len(folders_to_run))
 
@@ -588,6 +599,8 @@ def main():
 
             summary_df = clean_batch_summary(summary_df, assessment_date_required)
             output = "\n\n".join(all_logs)
+            if not summary_df.empty and "success" in summary_df.columns:
+                failed_count = len(summary_df[~summary_df["success"].astype(str).str.lower().eq("true")])
             returncode = 0 if failed_count == 0 else 1
 
             st.session_state["last_generation_status"] = {
