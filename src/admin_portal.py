@@ -106,12 +106,7 @@ def apply_vergo_theme():
         header[data-testid="stHeader"], div[data-testid="stToolbar"], div[data-testid="stDecoration"] {{ display:none !important; }}
         html, body, .stApp {{ background:var(--bg) !important; color:var(--text) !important; font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important; }}
         [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background:{app_gradient} !important; color:var(--text) !important; }}
-        [data-testid="collapsedControl"] {{
-            display:flex !important;
-            opacity:1 !important;
-            visibility:visible !important;
-            z-index:99999 !important;
-        }}
+        [data-testid="collapsedControl"] {{ display:none !important; }}
 
         section[data-testid="stSidebar"] {{
             min-width: 320px !important;
