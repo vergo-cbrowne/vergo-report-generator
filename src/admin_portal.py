@@ -18,7 +18,7 @@ except Exception:
     render_client_completion_tracker_page = None
 
 DEFAULT_ROOT_FOLDER_ID = "1zRTHGXHKpNDB2yqubgfXKqd2r6qO-92_"
-DEFAULT_CREDENTIALS_PATH = "credentials/service-account.json"
+DEFAULT_CREDENTIALS_PATH = None
 DEFAULT_PROMPT_PATH = "prompts/vergo_master_report_prompt.md"
 DEFAULT_MODEL = "gpt-4.1"
 SCAN_CSV = "output/drive_scan.csv"

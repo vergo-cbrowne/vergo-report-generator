@@ -9,7 +9,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 
-DEFAULT_CREDENTIALS_PATH = "credentials/service-account.json"
+DEFAULT_CREDENTIALS_PATH = None
 DEFAULT_ROOT_FOLDER_ID = "1zRTHGXHKpNDB2yqubgfXKqd2r6qO-92_"
 DEFAULT_OUTPUT_CSV = "output/drive_scan.csv"
 
