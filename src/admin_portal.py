@@ -1,6 +1,7 @@
 import base64
 import hmac
 import os
+import json
 import subprocess
 import sys
 from datetime import datetime
@@ -23,6 +24,7 @@ DEFAULT_MODEL = "gpt-4.1"
 SCAN_CSV = "output/drive_scan.csv"
 BATCH_SUMMARY_CSV = "output/portal_batch_summary.csv"
 LOGO_PATH = "assets/vergo-logo-white-transparent.png"
+CLIENT_USERS_PATH = "data/client_users.json"
 
 st.set_page_config(
     page_title="Vergo Report Admin",
@@ -306,19 +308,21 @@ def load_scan_csv(path: str) -> pd.DataFrame:
 
 
 def run_drive_scan(credentials_path: str, root_folder_id: str, full_scan: bool) -> pd.DataFrame:
-    max_companies = None if full_scan else 5
-    max_accounts = None if full_scan else 3
-    max_assessments = None if full_scan else 10
+    # Force full assessment scanning for pilot reporting.
+    # Previous test mode limited each account to 10 assessments, which hid folders like Mersey Seafoods.
+    max_companies = None
+    max_accounts = None
+    max_assessments = None
     rows = drive_scanner.scan_drive(credentials_path=credentials_path, root_folder_id=root_folder_id, max_companies=max_companies, max_accounts_per_company=max_accounts, max_assessments_per_account=max_assessments)
     drive_scanner.write_csv(rows, SCAN_CSV)
     return load_scan_csv(SCAN_CSV)
 
 
-def run_batch(folder_ids: list[str], credentials_path: str, prompt_path: str, model: str, root_folder_id: str):
+def run_batch(folder_ids: list[str], credentials_path: str, prompt_path: str, model: str):
     selected_file = Path("output/portal_selected_folders.txt")
     selected_file.parent.mkdir(parents=True, exist_ok=True)
     selected_file.write_text("\n".join(folder_ids) + "\n", encoding="utf-8")
-    command = [sys.executable, "src/batch_generate.py", "--folders-file", str(selected_file), "--credentials-path", credentials_path, "--prompt-path", prompt_path, "--model", model, "--summary-csv", BATCH_SUMMARY_CSV, "--root-folder-id", root_folder_id]
+    command = [sys.executable, "src/batch_generate.py", "--folders-file", str(selected_file), "--credentials-path", credentials_path, "--prompt-path", prompt_path, "--model", model, "--summary-csv", BATCH_SUMMARY_CSV]
     result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = result.stdout or ""
     summary = pd.DataFrame()
@@ -388,6 +392,70 @@ def render_metric_cards(total: int, ready: int, completed: int, missing: int):
     """, unsafe_allow_html=True)
 
 
+
+
+def load_client_users() -> list[dict]:
+    path = Path(CLIENT_USERS_PATH)
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("[]", encoding="utf-8")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def save_client_users(users: list[dict]) -> None:
+    path = Path(CLIENT_USERS_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(users, indent=2), encoding="utf-8")
+
+
+def render_client_access_page():
+    st.subheader("Client Access")
+
+    users = load_client_users()
+
+    st.markdown("### Existing Client Accounts")
+    if users:
+        st.dataframe(pd.DataFrame(users), use_container_width=True)
+    else:
+        st.info("No client accounts created yet.")
+
+    st.markdown("### Create New Client")
+    with st.form("create_client_user_form"):
+        client_name = st.text_input("Client Name")
+        client_slug = st.text_input("Client Slug", placeholder="eastcut")
+        username = st.text_input("Client Login Email")
+        password = st.text_input("Temporary Password")
+        drive_folder_id = st.text_input("Google Drive Intake Folder ID")
+        active = st.checkbox("Active", value=True)
+        submitted = st.form_submit_button("Create Client Access")
+
+    if submitted:
+        if not client_name or not client_slug or not username or not password or not drive_folder_id:
+            st.error("Please complete all fields.")
+            return
+
+        if any(u.get("username", "").lower() == username.lower() for u in users):
+            st.error("Client email already exists.")
+            return
+
+        users.append({
+            "client_name": client_name.strip(),
+            "client_slug": client_slug.strip().lower(),
+            "username": username.strip().lower(),
+            "password": password.strip(),
+            "drive_folder_id": drive_folder_id.strip(),
+            "active": active,
+        })
+
+        save_client_users(users)
+        st.success(f"Client access created for {client_name}.")
+        st.rerun()
+
+
+
 def main():
     load_local_env_file()
     apply_vergo_theme()
@@ -398,7 +466,7 @@ def main():
         st.error(f"Credentials file not found: {credentials_path}")
         st.stop()
 
-    tab_names = ["Report Generation"]
+    tab_names = ["Report Generation", "Client Access"]
     if render_client_completion_tracker_page is not None:
         tab_names.append("Client Completion Tracker")
     tabs = st.tabs(tab_names)
@@ -570,7 +638,6 @@ def main():
                     credentials_path,
                     prompt_path,
                     model,
-                    root_folder_id,
                 )
 
                 all_logs.append(f"--- Folder {index}: {folder_id} ---\n{returncode=}\n{output}")
@@ -752,7 +819,6 @@ def main():
                                     credentials_path,
                                     prompt_path,
                                     model,
-                                    root_folder_id,
                                 )
 
                             if retry_returncode == 0:
@@ -781,10 +847,14 @@ def main():
             elif state == "running":
                 st.caption(f"Last run: still marked as running for {total} {label}.")
 
-    if len(tabs) > 1 and render_client_completion_tracker_page is not None:
-        with tabs[1]:
+    with tabs[1]:
+        render_client_access_page()
+
+    if len(tabs) > 2 and render_client_completion_tracker_page is not None:
+        with tabs[2]:
             render_client_completion_tracker_page(credentials_path=credentials_path, root_folder_id=root_folder_id)
 
 
 if __name__ == "__main__":
     main()
+    
