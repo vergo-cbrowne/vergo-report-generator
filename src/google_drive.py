@@ -1,3 +1,4 @@
+import streamlit as st
 import io
 import json
 from typing import Any, Dict, List
@@ -9,9 +10,9 @@ SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
 def create_drive_service(credentials_path: str):
-    credentials = service_account.Credentials.from_service_account_file(
-        credentials_path,
-        scopes=SCOPES,
+    credentials = service_account.Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]),
+        scopes=["https://www.googleapis.com/auth/drive"]
     )
     return build("drive", "v3", credentials=credentials, cache_discovery=False)
 

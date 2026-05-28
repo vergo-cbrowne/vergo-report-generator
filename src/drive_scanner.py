@@ -1,3 +1,4 @@
+import streamlit as st
 import argparse
 import csv
 import json
@@ -14,9 +15,9 @@ DEFAULT_OUTPUT_CSV = "output/drive_scan.csv"
 
 
 def create_drive_service(credentials_path: str):
-    creds = service_account.Credentials.from_service_account_file(
-        credentials_path,
-        scopes=["https://www.googleapis.com/auth/drive"],
+    creds = service_account.Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]),
+        scopes=["https://www.googleapis.com/auth/drive"]
     )
     return build("drive", "v3", credentials=creds)
 
