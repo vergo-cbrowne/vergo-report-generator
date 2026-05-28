@@ -396,9 +396,7 @@ def main():
     require_admin_login()
     credentials_path, root_folder_id, prompt_path, model, full_scan, assessment_date_required, scan_clicked, load_existing_clicked = render_sidebar_controls()
     render_page_header()
-    if not Path(credentials_path).exists():
-        st.error(f"Credentials file not found: {credentials_path}")
-        st.stop()
+    # Google Drive credentials are loaded from Streamlit Secrets.
 
     tab_names = ["Report Generation"]
     if render_client_completion_tracker_page is not None:
