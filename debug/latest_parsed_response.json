@@ -1,0 +1,89 @@
+{
+  "title": "RULA Ergonomic Assessment Report",
+  "subtitle": "Task-Based Upper Limb Risk Analysis",
+  "cover_details": {
+    "Task name/title": "Observed Manual Task (Video: IMG_6415)",
+    "Company/Client name": "",
+    "Site location or facility name": "",
+    "Assessment date": "",
+    "Assessment method": "RULA",
+    "Video duration": "00:00:12",
+    "Assessor name": ""
+  },
+  "assessment_overview": [
+    "This assessment reviews a short manual task sequence captured in a 12-second video, using the RULA (Rapid Upper Limb Assessment) method to evaluate upper limb and trunk postural exposures. The analysis is based on five representative frames sampled throughout the task, each reflecting distinct postural moments. The assessment aims to identify key ergonomic risk factors and opportunities for improvement in the observed work process.",
+    "The task appears to involve repetitive upper limb activity, with notable wrist and neck postures visible in the sampled frames. The RULA method was selected to focus on upper limb and trunk mechanics, which are central to the observed task. No specific task notes or client context were provided, so the assessment is based solely on the video and pose estimation data.",
+    "Across all analyzed frames, the RULA scores consistently fall within the medium risk band, indicating that further investigation and potential changes may be needed. The assessment provides a screening-level review of postural risk, with recommendations tailored to the observed exposures and task setup."
+  ],
+  "score_summary": {
+    "assessment_method_type": "RULA",
+    "total_frames_analyzed": 5,
+    "average_score": 3,
+    "overall_risk_level": "Further investigation; changes may be needed",
+    "score_distribution": [
+      {
+        "score_range": "3",
+        "risk_band": "Further investigation; changes may be needed",
+        "frames_count": 5,
+        "frames_percent": 100,
+        "frames_display": "100% (5)",
+        "interpretation": "All analyzed frames scored 3, indicating a consistent medium risk level where further investigation and potential changes are recommended."
+      }
+    ],
+    "interpretation": "The RULA scores for all sampled frames are 3, placing the task in the action level where further investigation is warranted and changes may be needed. This suggests that while the exposures are not at the highest level, there are consistent postural factors that should be addressed to reduce cumulative strain. The uniformity of the scores across frames indicates that the observed postural exposures are sustained throughout the task, rather than being isolated to a single moment."
+  },
+  "risk_exposure_analysis": [
+    {
+      "heading": "Wrist Deviation and Extreme Wrist Posture",
+      "content": "Across all sampled frames, both wrists are consistently observed in extreme positions, with wrist angles at or near 180 degrees. This posture places the wrists in significant deviation from neutral, increasing the risk of cumulative strain and discomfort over time. The exposure is driven by the mechanics of the task, which appear to require sustained or repetitive wrist extension or deviation. This risk is modifiable through changes in task setup, tool design, or work method, and addressing it could help reduce the likelihood of upper limb discomfort or injury."
+    },
+    {
+      "heading": "Neck Flexion and Head Position",
+      "content": "The neck is frequently observed in a flexed or extended posture, with several frames showing high neck angles well above the optimal range. This suggests that the worker is either looking down or up for extended periods, likely due to the placement of the work or the need to visually inspect items. Neck flexion is a recognized risk factor for musculoskeletal discomfort, particularly when sustained or repeated. While some neck movement may be inherent to the task, optimizing work height and visual access could help reduce this exposure."
+    },
+    {
+      "heading": "Lower Arm and Elbow Angle",
+      "content": "Lower arm postures vary between low and high exposure levels, with several frames showing elbow angles outside the optimal range. This pattern indicates that the worker's forearms are not consistently supported or positioned within the recommended ergonomic zone. The exposure is likely driven by the reach distance and the orientation of the task surface. Adjustments to work height, reach, or the use of supports could help bring the lower arm posture closer to neutral and reduce cumulative loading."
+    },
+    {
+      "heading": "Trunk and Upper Arm Posture",
+      "content": "Trunk and upper arm postures are generally within the low exposure range, with minor deviations observed in some frames. The trunk remains relatively upright, and upper arms are not excessively elevated or abducted. These findings suggest that the task does not impose significant trunk or shoulder loading, and these regions are not primary concerns for this task. Maintaining these positive aspects should be a focus in any future task redesign."
+    }
+  ],
+  "overall_observations": [
+    "The main ergonomic drivers in this task are the sustained wrist deviation and non-neutral neck postures, both of which are consistent across the sampled frames. These exposures are likely influenced by the height and orientation of the work surface, as well as the need for visual inspection or manual manipulation.",
+    "Positive aspects include generally neutral trunk and upper arm postures, indicating that the task setup does not require excessive reaching or trunk flexion. However, the cumulative effect of repetitive wrist and neck positions warrants review, particularly if the task is performed frequently or for extended periods."
+  ],
+  "recommendations": [
+    {
+      "heading": "Adjust Work Height and Orientation",
+      "content": "Consider raising or angling the work surface to bring items closer to elbow height and within the worker's visual field. This change can help reduce both wrist deviation and neck flexion by promoting more neutral postures. Implementation may involve workstation modification or use of adjustable platforms."
+    },
+    {
+      "heading": "Introduce Ergonomic Tools or Supports",
+      "content": "Evaluate the use of tools or supports that allow the wrists to remain in a more neutral position during task performance. Ergonomically designed handles or wrist supports can reduce extreme wrist angles and lower the risk of cumulative strain. Selection should be based on the specific task requirements and worker feedback."
+    },
+    {
+      "heading": "Encourage Task Rotation or Micro-Breaks",
+      "content": "Implement regular task rotation or scheduled micro-breaks to limit the duration of sustained wrist and neck postures. This approach helps reduce cumulative exposure and allows for recovery, especially in repetitive or high-frequency tasks. Scheduling can be integrated into existing workflow with minimal disruption."
+    },
+    {
+      "heading": "Provide Training on Neutral Posture Techniques",
+      "content": "Offer targeted training to workers on maintaining neutral wrist and neck postures during manual tasks. Training can increase awareness of risk factors and promote safer movement patterns. Incorporate practical demonstrations and feedback to reinforce learning and support behavior change."
+    }
+  ],
+  "training_videos": [
+    {
+      "module": "Module 1: Warm-Up",
+      "content": "This module is relevant as it prepares workers for manual tasks and helps reduce the risk of strain associated with repetitive wrist and neck movements."
+    },
+    {
+      "module": "Module 2: Power Stance & Power Zone",
+      "content": "Focusing on working within the power zone can help minimize reach and promote neutral postures, directly addressing the wrist and lower arm exposures observed in the task."
+    },
+    {
+      "module": "Module 11: Working Above the Shoulders",
+      "content": "Although the task does not involve overhead work, this module is relevant due to the observed neck extension and flexion, providing strategies to reduce neck strain during visual inspection or manual handling."
+    }
+  ]
+}

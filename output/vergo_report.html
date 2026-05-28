@@ -1,0 +1,431 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Vergo Movement Analysis Risk Report</title>
+  <style>
+    :root {
+      --vergo-blue: #1f4e79;
+      --vergo-blue-dark: #173a5c;
+      --vergo-blue-light: #eaf2f8;
+      --text: #111827;
+      --muted: #5b6770;
+      --border: #c9d7e5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      line-height: 1.42;
+      margin: 44px;
+      font-size: 11.2pt;
+      background: #ffffff;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 4px solid var(--vergo-blue);
+      padding-bottom: 16px;
+      margin-bottom: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      width: 135px;
+      max-height: 64px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .brand-mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--vergo-blue);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13pt;
+      letter-spacing: 0.5px;
+    }
+
+    .report-label {
+      color: var(--muted);
+      font-size: 10pt;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 800;
+      text-align: right;
+      line-height: 1.35;
+    }
+
+    .report-subtitle {
+      margin: 12px 0 16px 0;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: var(--muted);
+      font-style: italic;
+      max-width: 760px;
+    }
+
+    .cover {
+      margin-bottom: 22px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-left: 6px solid var(--vergo-blue);
+      background: var(--vergo-blue-light);
+      border-radius: 10px;
+    }
+
+    .metadata {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 7px 16px;
+      font-size: 10.8pt;
+    }
+
+    .label {
+      font-weight: 700;
+      color: var(--vergo-blue-dark);
+    }
+
+    .method-note {
+      margin-bottom: 22px;
+      padding: 14px 16px;
+      border: 1px solid #d8e2ec;
+      border-left: 5px solid var(--vergo-blue);
+      background: #f8fbfd;
+      border-radius: 8px;
+    }
+
+    .method-note h2 {
+      margin-top: 0;
+      font-size: 13.5pt;
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 7px;
+      color: var(--vergo-blue);
+    }
+
+    .method-note p {
+      margin-bottom: 0;
+      color: #374151;
+      font-size: 10.2pt;
+    }
+
+    h2 {
+      color: var(--vergo-blue);
+      font-size: 15.5pt;
+      border-bottom: 1.5px solid var(--vergo-blue);
+      padding-bottom: 5px;
+      margin-top: 26px;
+      margin-bottom: 12px;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    h3 {
+      font-size: 12.2pt;
+      margin-top: 20px;
+      margin-bottom: 7px;
+      font-weight: 800;
+      color: #1f70b8;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    ul {
+      margin-top: 4px;
+      margin-bottom: 14px;
+      padding-left: 22px;
+    }
+
+    li {
+      margin-bottom: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 20px 0;
+      font-size: 10.4pt;
+    }
+
+    th, td {
+      border: 1px solid #b8c2cc;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .summary-table th {
+      width: 34%;
+      background: #d6eaf5;
+      color: #1f70b8;
+      font-weight: 800;
+    }
+
+    .summary-table td {
+      background: #ffffff;
+    }
+
+    .distribution-table thead th {
+      background: #2f78b7;
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .risk-low td {
+      background: #d9ead3;
+    }
+
+    .risk-medium td {
+      background: #fff0b3;
+    }
+
+    .risk-high td {
+      background: #f9d5bd;
+    }
+
+    .risk-very-high td {
+      background: #efb8b8;
+    }
+
+    .report-section {
+      margin-bottom: 18px;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+
+    .subsection-block {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      margin-bottom: 10px;
+    }
+
+    .footer-note {
+      margin-top: 34px;
+      padding-top: 10px;
+      border-top: 1px solid #d1d5db;
+      color: var(--muted);
+      font-size: 9pt;
+    }
+
+    .disclaimer-section {
+      page-break-before: auto;
+      break-before: auto;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+      }
+
+      .topbar,
+      .report-subtitle,
+      .cover,
+      .method-note {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .subsection-block {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="file:///workspaces/vergo-report-generator/assets/vergo-logo.png" alt="Vergo logo">
+    </div>
+    <div class="report-label">
+      Movement Analysis<br>
+      Risk Report
+    </div>
+  </header>
+
+  <p class="report-subtitle">
+    Assessment of task-specific movement patterns to identify ergonomic risks and support injury prevention strategies.
+  </p>
+
+  <section class="cover">
+    <div class="metadata">
+      <div class="label">Task:</div><div>Observed Manual Task (Video: IMG_6415)</div>
+      <div class="label">Company:</div><div>EastCut</div>
+      <div class="label">Site / Location:</div><div>Eastcut - May 2026 - IMG_6415 - 263ba</div>
+      <div class="label">Assessment Date:</div><div>Not specified</div>
+      <div class="label">Assessment Method:</div><div>RULA (Rapid Upper Limb Assessment)</div>
+      <div class="label">Video Duration:</div><div>00:00:12</div>
+      <div class="label">Assessor:</div><div>Vergo Ergonomics Team</div>
+    </div>
+  </section>
+
+  
+<section class="method-note">
+  <h2>How to read this report</h2>
+  <p>RULA, or Rapid Upper Limb Assessment, is a screening tool used to assess postural exposure in the neck, trunk, upper arms, lower arms, wrists, muscle use, force/load, and activity. The score helps identify whether further ergonomic investigation or task changes may be needed. RULA is not an injury prediction tool. It should be interpreted together with the video context, task frequency, duration, force, workstation layout, and worker feedback.</p>
+</section>
+
+
+  
+<section class="report-section">
+  <h2>Section 1 – Assessment Overview</h2>
+  <p>This assessment reviews a short manual task sequence captured in a 12-second video, using the RULA (Rapid Upper Limb Assessment) method to evaluate upper limb and trunk postural exposures. The analysis is based on five representative frames sampled throughout the task, each reflecting distinct postural moments. The assessment aims to identify key ergonomic risk factors and opportunities for improvement in the observed work process.</p>
+<p>The task appears to involve repetitive upper limb activity, with notable wrist and neck postures visible in the sampled frames. The RULA method was selected to focus on upper limb and trunk mechanics, which are central to the observed task. No specific task notes or client context were provided, so the assessment is based solely on the video and pose estimation data.</p>
+<p>Across all analyzed frames, the RULA scores consistently fall within the medium risk band, indicating that further investigation and potential changes may be needed. The assessment provides a screening-level review of postural risk, with recommendations tailored to the observed exposures and task setup.</p>
+</section>
+
+  
+<section class="report-section">
+  <h2>Section 2 – Summary of Assessment Results</h2>
+  
+<table class="summary-table">
+  <tbody>
+    <tr>
+      <th>Total Frames Analyzed</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>Average RULA Score</th>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>Overall Risk Level</th>
+      <td><strong>Further investigation; changes may be needed</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Score Distribution</h3>
+<table class="distribution-table">
+  <thead>
+    <tr>
+      <th>Score Range</th>
+      <th>Risk Band</th>
+      <th>Frames (%)</th>
+      <th>Interpretation</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <tr class="risk-medium">
+      <td>3</td>
+      <td>Further investigation; changes may be needed</td>
+      <td>100% (5)</td>
+      <td>All analyzed frames scored 3, indicating a consistent medium risk level where further investigation and potential changes are recommended.</td>
+    </tr>
+
+  </tbody>
+</table>
+
+<h3>Interpretation</h3>
+<p>The RULA scores for all sampled frames are 3, placing the task in the action level where further investigation is warranted and changes may be needed. This suggests that while the exposures are not at the highest level, there are consistent postural factors that should be addressed to reduce cumulative strain. The uniformity of the scores across frames indicates that the observed postural exposures are sustained throughout the task, rather than being isolated to a single moment.</p>
+
+</section>
+
+  
+<section class="report-section">
+  <h2>Section 3 – Task-Based Risk Exposure Analysis</h2>
+  <div class="subsection-block">
+<h3>Wrist Deviation and Extreme Wrist Posture</h3>
+<p>Across all sampled frames, both wrists are consistently observed in extreme positions, with wrist angles elevated. This posture places the wrists in significant deviation from neutral, increasing the risk of cumulative strain and discomfort over time. The exposure is driven by the mechanics of the task, which appear to require sustained or repetitive wrist extension or deviation. This risk is modifiable through changes in task setup, tool design, or work method, and addressing it could help reduce the likelihood of upper limb discomfort or injury.</p>
+</div>
+<div class="subsection-block">
+<h3>Neck Flexion and Head Position</h3>
+<p>The neck is frequently observed in a flexed or extended posture, with several frames showing high neck angles well above the optimal range. This suggests that the worker is either looking down or up for extended periods, likely due to the placement of the work or the need to visually inspect items. Neck flexion is a recognized risk factor for musculoskeletal discomfort, particularly when sustained or repeated. While some neck movement may be inherent to the task, optimizing work height and visual access could help reduce this exposure.</p>
+</div>
+<div class="subsection-block">
+<h3>Lower Arm and Elbow Angle</h3>
+<p>Lower arm postures vary between low and high exposure levels, with several frames showing elbow angles outside the optimal range. This pattern indicates that the worker&#x27;s forearms are not consistently supported or positioned within the recommended ergonomic zone. The exposure is likely driven by the reach distance and the orientation of the task surface. Adjustments to work height, reach, or the use of supports could help bring the lower arm posture closer to neutral and reduce cumulative loading.</p>
+</div>
+<div class="subsection-block">
+<h3>Trunk and Upper Arm Posture</h3>
+<p>Trunk and upper arm postures are generally within the low exposure range, with minor deviations observed in some frames. The trunk remains relatively upright, and upper arms are not excessively elevated or abducted. These findings suggest that the task does not impose significant trunk or shoulder loading, and these regions are not primary concerns for this task. Maintaining these positive aspects should be a focus in any future task redesign.</p>
+</div>
+
+</section>
+
+  
+<section class="report-section">
+  <h2>Section 4 – Overall Observations</h2>
+  <p>The main ergonomic drivers in this task are the sustained wrist deviation and non-neutral neck postures, both of which are consistent across the sampled frames. These exposures are likely influenced by the height and orientation of the work surface, as well as the need for visual inspection or manual manipulation.</p>
+<p>Positive aspects include generally neutral trunk and upper arm postures, indicating that the task setup does not require excessive reaching or trunk flexion. However, the cumulative effect of repetitive wrist and neck positions warrants review, particularly if the task is performed frequently or for extended periods.</p>
+<p>heading: Assessment Method Note</p>
+<p>content: Because this assessment used RULA, the scoring emphasizes upper-limb and posture exposure. Observed full-body demands such as trunk flexion, material handling, or lower-limb posture may warrant separate review using a full-body screening method such as REBA.</p>
+</section>
+
+  
+<section class="report-section">
+  <h2>Section 5 – Overall Recommendations</h2>
+  <div class="subsection-block">
+<h3>Adjust Work Height and Orientation</h3>
+<p>Consider raising or angling the work surface to bring items closer to elbow height and within the worker&#x27;s visual field. This change can help reduce both wrist deviation and neck flexion by promoting more neutral postures. Implementation may involve workstation modification or use of adjustable platforms.</p>
+</div>
+<div class="subsection-block">
+<h3>Introduce Ergonomic Tools or Supports</h3>
+<p>Evaluate the use of tools or supports that allow the wrists to remain in a more neutral position during task performance. Ergonomically designed handles or wrist supports can reduce extreme wrist angles and lower the risk of cumulative strain. Selection should be based on the specific task requirements and worker feedback.</p>
+</div>
+<div class="subsection-block">
+<h3>Encourage Task Rotation or Micro-Breaks</h3>
+<p>Implement regular task rotation or scheduled micro-breaks to limit the duration of sustained wrist and neck postures. This approach helps reduce cumulative exposure and allows for recovery, especially in repetitive or high-frequency tasks. Scheduling can be integrated into existing workflow with minimal disruption.</p>
+</div>
+<div class="subsection-block">
+<h3>Provide Training on Neutral Posture Techniques</h3>
+<p>Offer targeted training to workers on maintaining neutral wrist and neck postures during manual tasks. Training can increase awareness of risk factors and promote safer movement patterns. Incorporate practical demonstrations and feedback to reinforce learning and support behavior change.</p>
+</div>
+
+</section>
+
+  
+<section class="report-section">
+  <h2>Section 6 – Targeted Vergo Training Videos</h2>
+  <div class="subsection-block">
+<h3>Module 1: Warm-Up</h3>
+<p>Relevant as general preparation for repetitive or sustained movement exposure.</p>
+</div>
+<div class="subsection-block">
+<h3>Module 2: Power Stance &amp; Power Zone</h3>
+<p>Relevant to keeping work close to the body and maintaining stronger, more neutral working postures.</p>
+</div>
+<div class="subsection-block">
+<h3>Module 14: Using Handheld Devices</h3>
+<p>Relevant to repetitive handheld tool use, wrist positioning, grip, and hand/arm posture.</p>
+</div>
+
+</section>
+
+  
+<section class="report-section disclaimer-section">
+  <h2>Section 7 – Disclaimer</h2>
+  <p>This movement analysis provides general guidance based on the video provided at the time of review. It is not intended to replace medical advice, diagnosis, or professional ergonomic evaluation. Postural risk levels may vary depending on actual workplace conditions and individual worker factors. Employers remain responsible for complying with the Nova Scotia Occupational Health and Safety Act, related regulations, CSA Z1004-12, and all applicable standards.</p>
+<p>Vergo’s motion-analysis results support proactive identification of movement-related risks but are not a substitute for assessments conducted by certified ergonomists or occupational health professionals. Any images or video content included must be used in accordance with organizational privacy and data-protection policies.</p>
+</section>
+
+
+  <div class="footer-note">
+    EastCut – Observed Manual Task (Video: IMG_6415) | www.vergo.ai
+  </div>
+</body>
+</html>

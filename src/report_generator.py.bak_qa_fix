@@ -579,11 +579,12 @@ def _normalize_score_summary(report: dict[str, Any]) -> dict[str, Any]:
     return report
 
 
+
 def _fix_risk_band_typos(report: dict[str, Any]) -> dict[str, Any]:
     text_replacements = {
-        "Very medium": "Medium",
-        "very medium": "medium",
-        "Very Medium": "Medium",
+        "Very medium": "Very High",
+        "Very Medium": "Very High",
+        "very medium": "Very High",
     }
 
     def walk(value):
@@ -667,6 +668,7 @@ def _add_module_14_rationale_or_remove(report: dict[str, Any]) -> dict[str, Any]
             continue
 
         if not has_hand_wrist:
+            # Suppress Module 14 when there is no clear hand/wrist/tool/device exposure.
             continue
 
         content = _clean_text(
@@ -792,160 +794,6 @@ def _normalize_report(parsed: dict[str, Any]) -> dict[str, Any]:
     report = _add_method_limitation_note(report)
 
     return report
-
-
-def _apply_eastcut_qa_guardrails(normalized: dict[str, Any]) -> dict[str, Any]:
-    report_blob = json.dumps(normalized, ensure_ascii=False)
-
-    eastcut_files = [
-        "IMG_6397",
-        "IMG_6398",
-        "IMG_6401",
-        "IMG_6402",
-        "IMG_6403",
-        "IMG_6404",
-        "IMG_6405",
-        "IMG_6407",
-        "IMG_6408",
-        "IMG_6410",
-        "IMG_6411",
-        "IMG_6412",
-        "IMG_6413",
-        "IMG_6414",
-        "IMG_6415",
-    ]
-
-    detected_file = None
-    for file_name in eastcut_files:
-        if file_name in report_blob:
-            detected_file = file_name
-            break
-
-    def recursive_replace(value):
-        if isinstance(value, dict):
-            return {key: recursive_replace(item) for key, item in value.items()}
-
-        if isinstance(value, list):
-            return [recursive_replace(item) for item in value]
-
-        if isinstance(value, str):
-            replacements = {
-                "Very medium": "Medium",
-                "very medium": "medium",
-                "Very Medium": "Medium",
-                "wrist angles reaching up to 180 degrees": (
-                    "elevated wrist postures were detected, but specific angle values "
-                    "from pose estimation should be interpreted cautiously"
-                ),
-                "wrist angles consistently at or near 180 degrees": (
-                    "elevated wrist postures were detected, but specific angle values "
-                    "from pose estimation should be interpreted cautiously"
-                ),
-                "neck at near 180 degrees": (
-                    "elevated neck postures were detected, but specific angle values "
-                    "from pose estimation should be interpreted cautiously"
-                ),
-                "180-degree wrist extension": "elevated wrist posture",
-                "180 degree wrist extension": "elevated wrist posture",
-                "at or near 180 degrees": "elevated",
-                "near 180 degrees": "elevated",
-                "180 degrees": "elevated posture values",
-                "180-degree": "elevated posture",
-                "carpal tunnel syndrome": "upper-limb strain",
-                "Carpal tunnel syndrome": "Upper-limb strain",
-            }
-
-            for old_text, new_text in replacements.items():
-                value = value.replace(old_text, new_text)
-
-            return value
-
-        return value
-
-    normalized = recursive_replace(normalized)
-
-    if detected_file:
-        cover = normalized.get("cover_details", {})
-        if not isinstance(cover, dict):
-            cover = {}
-
-        for key in [
-            "task_name",
-            "Task Name",
-            "assessment_name",
-            "Assessment Name",
-            "task",
-            "Task",
-            "task_title",
-            "Task Title",
-            "report_title",
-            "Report Title",
-        ]:
-            if key in cover:
-                cover[key] = detected_file
-
-        cover["task_name"] = detected_file
-        cover["assessment_name"] = detected_file
-
-        normalized["cover_details"] = cover
-
-    short_video_files = {
-        "IMG_6402",
-        "IMG_6403",
-        "IMG_6404",
-        "IMG_6410",
-        "IMG_6411",
-    }
-
-    short_video_warning = (
-        "Because this video clip is very short, the findings should be interpreted with additional caution. "
-        "The analysis reflects only the brief movement sample captured and may not represent the full task cycle, "
-        "typical repetition, or sustained exposure across a normal work period."
-    )
-
-    if detected_file in short_video_files:
-        overview = normalized.get("assessment_overview", [])
-
-        if isinstance(overview, list):
-            already_exists = any(
-                short_video_warning.lower() in _clean_text(item).lower()
-                for item in overview
-            )
-
-            if not already_exists:
-                overview.append(short_video_warning)
-
-            normalized["assessment_overview"] = overview
-
-    if detected_file == "IMG_6414":
-        modules = normalized.get("training_videos", [])
-
-        if isinstance(modules, list):
-            updated_modules = []
-
-            for item in modules:
-                if not isinstance(item, dict):
-                    updated_modules.append(item)
-                    continue
-
-                item_text = json.dumps(item, ensure_ascii=False).lower()
-
-                if (
-                    "module 14" in item_text
-                    or "using handheld devices" in item_text
-                    or "handheld devices" in item_text
-                ):
-                    item["module"] = "Module 11: Working Above the Shoulders"
-                    item["content"] = (
-                        "This module is recommended because the task involves sustained arm elevation "
-                        "and overhead shoulder posture exposure."
-                    )
-
-                updated_modules.append(item)
-
-            normalized["training_videos"] = updated_modules
-
-    return normalized
 
 
 def _debug_section_counts(report: dict[str, Any]) -> None:
@@ -1198,7 +1046,6 @@ IMPORTANT:
     parsed_path.write_text(_safe_json_dumps(parsed), encoding="utf-8")
 
     normalized = _normalize_report(parsed)
-    normalized = _apply_eastcut_qa_guardrails(normalized)
 
     normalized_path = debug_dir / "latest_normalized_report.json"
     normalized_path.write_text(_safe_json_dumps(normalized), encoding="utf-8")
