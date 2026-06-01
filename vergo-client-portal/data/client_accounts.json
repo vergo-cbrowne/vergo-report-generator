@@ -1,0 +1,11 @@
+[
+  {
+    "clientName": "Test Client",
+    "slug": "test-client",
+    "email": "hello@vergo.ai",
+    "passwordHash": "pbkdf2_sha256$250000$ed9ddbc858968b79e7430b5bcabfc7a2$d79c24daec4b127fb37be8a80abd872f73ffc28466bf01619f107f209bcbdf3c",
+    "intakeFolderId": "1W3aRbZ-52Xiz1Mo3h1Dg99HUlh0uRuSc",
+    "active": true,
+    "createdAt": "2026-06-01T00:00:00.000Z"
+  }
+]

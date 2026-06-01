@@ -1,5 +1,6 @@
 import base64
 import hmac
+import hashlib
 import os
 import json
 import subprocess
@@ -24,7 +25,8 @@ DEFAULT_MODEL = "gpt-4.1"
 SCAN_CSV = "output/drive_scan.csv"
 BATCH_SUMMARY_CSV = "output/portal_batch_summary.csv"
 LOGO_PATH = "assets/vergo-logo-white-transparent.png"
-CLIENT_USERS_PATH = "data/client_users.json"
+CLIENT_ACCOUNTS_PATH = "data/client_accounts.json"
+LEGACY_CLIENT_USERS_PATH = "data/client_users.json"
 
 st.set_page_config(
     page_title="Vergo Report Admin",
@@ -394,31 +396,90 @@ def render_metric_cards(total: int, ready: int, completed: int, missing: int):
 
 
 
-def load_client_users() -> list[dict]:
-    path = Path(CLIENT_USERS_PATH)
+def hash_password(password: str) -> str:
+    salt = os.urandom(16)
+    derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 250000, dklen=32)
+    return f"pbkdf2_sha256$250000${salt.hex()}${derived.hex()}"
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        algorithm, iterations, salt_hex, stored_hash = password_hash.split("$")
+        if algorithm != "pbkdf2_sha256":
+            return False
+        salt = bytes.fromhex(salt_hex)
+        derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, int(iterations), dklen=32)
+        return hmac.compare_digest(derived.hex(), stored_hash)
+    except Exception:
+        return False
+
+
+def load_client_accounts() -> list[dict]:
+    path = Path(CLIENT_ACCOUNTS_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
     if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
+        legacy_path = Path(LEGACY_CLIENT_USERS_PATH)
+        if legacy_path.exists():
+            try:
+                legacy_users = json.loads(legacy_path.read_text(encoding="utf-8"))
+                accounts = []
+                for user in legacy_users:
+                    email = str(user.get("username", "")).strip().lower()
+                    slug = str(user.get("client_slug", "")).strip().lower()
+                    client_name = str(user.get("client_name", "")).strip()
+                    password = str(user.get("password", "")).strip()
+                    intake_folder_id = str(user.get("drive_folder_id", "")).strip()
+                    active = bool(user.get("active", True))
+                    if email and slug and client_name and password and intake_folder_id:
+                        accounts.append({
+                            "clientName": client_name,
+                            "slug": slug,
+                            "email": email,
+                            "passwordHash": hash_password(password),
+                            "intakeFolderId": intake_folder_id,
+                            "active": active,
+                            "createdAt": datetime.utcnow().isoformat() + "Z",
+                        })
+                if accounts:
+                    path.write_text(json.dumps(accounts, indent=2), encoding="utf-8")
+                    return accounts
+            except Exception:
+                pass
         path.write_text("[]", encoding="utf-8")
+        return []
+
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return []
 
 
-def save_client_users(users: list[dict]) -> None:
-    path = Path(CLIENT_USERS_PATH)
+def save_client_accounts(accounts: list[dict]) -> None:
+    path = Path(CLIENT_ACCOUNTS_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(users, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(accounts, indent=2), encoding="utf-8")
 
 
 def render_client_access_page():
     st.subheader("Client Access")
 
-    users = load_client_users()
+    users = load_client_accounts()
+    accounts_for_display = [
+        {
+            "Client Name": user.get("clientName", ""),
+            "Slug": user.get("slug", ""),
+            "Email": user.get("email", ""),
+            "Drive Folder ID": user.get("intakeFolderId", ""),
+            "Active": user.get("active", False),
+            "Created At": user.get("createdAt", ""),
+        }
+        for user in users
+    ]
 
     st.markdown("### Existing Client Accounts")
-    if users:
-        st.dataframe(pd.DataFrame(users), use_container_width=True)
+    if accounts_for_display:
+        st.dataframe(pd.DataFrame(accounts_for_display), use_container_width=True)
     else:
         st.info("No client accounts created yet.")
 
@@ -426,31 +487,36 @@ def render_client_access_page():
     with st.form("create_client_user_form"):
         client_name = st.text_input("Client Name")
         client_slug = st.text_input("Client Slug", placeholder="eastcut")
-        username = st.text_input("Client Login Email")
-        password = st.text_input("Temporary Password")
+        email = st.text_input("Client Login Email")
+        password = st.text_input("Temporary Password", type="password")
         drive_folder_id = st.text_input("Google Drive Intake Folder ID")
         active = st.checkbox("Active", value=True)
         submitted = st.form_submit_button("Create Client Access")
 
     if submitted:
-        if not client_name or not client_slug or not username or not password or not drive_folder_id:
+        if not client_name or not client_slug or not email or not password or not drive_folder_id:
             st.error("Please complete all fields.")
             return
 
-        if any(u.get("username", "").lower() == username.lower() for u in users):
+        if any(u.get("email", "").lower() == email.lower() for u in users):
             st.error("Client email already exists.")
             return
 
+        if any(u.get("slug", "").lower() == client_slug.lower() for u in users):
+            st.error("Client slug already exists.")
+            return
+
         users.append({
-            "client_name": client_name.strip(),
-            "client_slug": client_slug.strip().lower(),
-            "username": username.strip().lower(),
-            "password": password.strip(),
-            "drive_folder_id": drive_folder_id.strip(),
+            "clientName": client_name.strip(),
+            "slug": client_slug.strip().lower(),
+            "email": email.strip().lower(),
+            "passwordHash": hash_password(password.strip()),
+            "intakeFolderId": drive_folder_id.strip(),
             "active": active,
+            "createdAt": datetime.utcnow().isoformat() + "Z",
         })
 
-        save_client_users(users)
+        save_client_accounts(users)
         st.success(f"Client access created for {client_name}.")
         st.rerun()
 

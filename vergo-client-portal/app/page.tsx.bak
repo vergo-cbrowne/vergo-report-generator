@@ -244,11 +244,11 @@ export default function VergoClientPortal() {
     <>
       <div>
         <div className="mb-6 lg:mb-7">
-          <a href="https://www.vergo.ai" target="_blank" rel="noopener noreferrer"><img
+          <img
             src="/assets/vergo-logo-white-transparent.png"
             alt="Vergo"
             className="w-32 sm:w-36 h-auto mb-2"
-          /></a>
+          />
 
         </div>
 
@@ -276,6 +276,16 @@ export default function VergoClientPortal() {
             <Clock size={21} className={currentPage === "library" ? "text-[#00c853]" : ""} />
             <span className="text-sm sm:text-base">Assessment Library</span>
           </button>
+
+          <a
+            href="https://coda.io/d/Vergo-Guide-and-Documents_d6p0qGhIgSL/Video-Upload-Assessment-Guide_sugPlHrk#_luGE89v1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full text-zinc-200 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition"
+          >
+            <FileText size={21} />
+            <ExternalLink size={15} className="ml-auto text-zinc-400" />
+          </a>
 
           <a
             href="https://coda.io/d/Vergo-Guide-and-Documents_d6p0qGhIgSL/Getting-Started-with-Vergo_suhIVx8U#_luenbGgu"
