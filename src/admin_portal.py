@@ -324,7 +324,11 @@ def run_batch(folder_ids: list[str], credentials_path: str, prompt_path: str, mo
     selected_file = Path("output/portal_selected_folders.txt")
     selected_file.parent.mkdir(parents=True, exist_ok=True)
     selected_file.write_text("\n".join(folder_ids) + "\n", encoding="utf-8")
-    command = [sys.executable, "src/batch_generate.py", "--folders-file", str(selected_file), "--credentials-path", credentials_path, "--prompt-path", prompt_path, "--model", model, "--summary-csv", BATCH_SUMMARY_CSV]
+    command = [sys.executable, "src/batch_generate.py", "--folders-file", str(selected_file), "--credentials-path", credentials_path or "credentials/service-account.json", "--prompt-path", prompt_path, "--model", model, "--summary-csv", BATCH_SUMMARY_CSV]
+    if not command:
+        return 1, "ERROR: Report generation command is empty. Check the script path / batch command configuration in admin_portal.py.", None
+    if not command or any(part is None for part in command):
+        return 1, f"ERROR: Report generation command contains None: {command}", None
     result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = result.stdout or ""
     summary = pd.DataFrame()
@@ -709,7 +713,7 @@ def main():
 
                 folder_failed = False
 
-                if one_summary is not None and not one_summary.empty:
+                if one_summary is not None and hasattr(one_summary, "empty") and not one_summary.empty:
                     all_summaries.append(one_summary)
 
                     if "success" in one_summary.columns:
@@ -917,7 +921,9 @@ def main():
 
     if len(tabs) > 2 and render_client_completion_tracker_page is not None:
         with tabs[2]:
-            render_client_completion_tracker_page(credentials_path=credentials_path, root_folder_id=root_folder_id)
+            if not credentials_path:
+                credentials_path = "credentials/service-account.json"
+    render_client_completion_tracker_page(credentials_path=credentials_path, root_folder_id=root_folder_id)
 
 
 if __name__ == "__main__":

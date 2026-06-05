@@ -28,6 +28,21 @@ BODY_KEYS = [
 HEADING_KEYS = ["heading", "Heading", "module", "Module", "title", "Title"]
 
 
+
+
+def _render_heading_content_block(value) -> str:
+    """Render structured heading/content dicts instead of leaking raw 'heading:'/'content:' text."""
+    if isinstance(value, dict) and ("heading" in value or "content" in value):
+        heading = _clean_text(value.get("heading") or "")
+        content = _clean_text(value.get("content") or "")
+        html = ""
+        if heading:
+            html += f"<h3>{escape(heading)}</h3>"
+        if content:
+            html += f"<p>{escape(content)}</p>"
+        return html
+    return ""
+
 def _clean_text(value) -> str:
     if value is None:
         return ""
@@ -797,7 +812,6 @@ def _render_heading_body_items(items) -> str:
                 html += f"<h3>{escape(_clean_text(key))}</h3>\n"
                 html += _p(value)
                 html += "\n</div>\n"
-
     return html
 
 
@@ -1203,6 +1217,34 @@ def build_html_report(report_data: dict, output_path: str | Path) -> Path:
 </html>
 """
 
+    html = _cleanup_leaked_heading_content(html)
+    html = _fix_leaked_heading_content_text(html)
     output_path.write_text(html, encoding="utf-8")
     print(f"HTML report saved to: {output_path}")
     return output_path
+
+def _cleanup_leaked_heading_content(html: str) -> str:
+    pattern = re.compile(
+        r'<p>heading:\\s*(.*?)\\s*content:\\s*(.*?)</p>',
+        re.IGNORECASE | re.DOTALL,
+    )
+    return pattern.sub(lambda m: f"<h3>{escape(_clean_text(m.group(1)))}</h3><p>{escape(_clean_text(m.group(2)))}</p>", html)
+
+
+
+def _fix_leaked_heading_content_text(html: str) -> str:
+    html = re.sub(
+        r'heading:\s*Assessment Method Note\s*</p>\s*<p>\s*content:\s*',
+        r'<strong>Assessment Method Note</strong></p><p>',
+        html,
+        flags=re.IGNORECASE,
+    )
+    html = re.sub(
+        r'heading:\s*Assessment Method Note\s*<br\s*/?>\s*content:\s*',
+        r'<strong>Assessment Method Note</strong><br>',
+        html,
+        flags=re.IGNORECASE,
+    )
+    html = html.replace("heading: Assessment Method Note", "Assessment Method Note")
+    html = html.replace("content: Because this assessment used", "Because this assessment used")
+    return html

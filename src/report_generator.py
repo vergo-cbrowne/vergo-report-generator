@@ -1208,3 +1208,168 @@ IMPORTANT:
     _debug_content_presence(normalized)
 
     return normalized
+
+# === Vergo quality rules: stable RULA interpretation + dynamic training modules ===
+
+def _vergo_flatten_text(obj):
+    if obj is None:
+        return ""
+    if isinstance(obj, str):
+        return obj
+    if isinstance(obj, dict):
+        return " ".join(_vergo_flatten_text(v) for v in obj.values())
+    if isinstance(obj, list):
+        return " ".join(_vergo_flatten_text(v) for v in obj)
+    return str(obj)
+
+
+def _vergo_collect_numeric_scores(obj, scores=None):
+    if scores is None:
+        scores = []
+    score_keys = {"rula_score", "final_rula", "final_score", "rula_final", "score"}
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            key = str(k).lower()
+            if key in score_keys:
+                try:
+                    value = float(v)
+                    if 1 <= value <= 7:
+                        scores.append(value)
+                except Exception:
+                    pass
+            else:
+                _vergo_collect_numeric_scores(v, scores)
+    elif isinstance(obj, list):
+        for item in obj:
+            _vergo_collect_numeric_scores(item, scores)
+    return scores
+
+
+def _vergo_detect_method(report):
+    text = _vergo_flatten_text({
+        "assessment_method_type": report.get("assessment_method_type"),
+        "assessment_method": report.get("assessment_method"),
+        "method": report.get("method"),
+        "title": report.get("title"),
+        "score_summary": report.get("score_summary"),
+    }).upper()
+    if "RULA" in text:
+        return "RULA"
+    if "REBA" in text:
+        return "REBA"
+    return ""
+
+
+def _vergo_add_stable_rula_sentence(report):
+    if _vergo_detect_method(report) != "RULA":
+        return report
+
+    scores = _vergo_collect_numeric_scores(report)
+    if len(scores) < 2:
+        return report
+
+    rounded = [round(s) for s in scores]
+    most_common = max(set(rounded), key=rounded.count)
+    share = rounded.count(most_common) / len(rounded)
+    variance = sum((s - (sum(scores) / len(scores))) ** 2 for s in scores) / len(scores)
+
+    if share < 0.85 and variance > 0.05:
+        return report
+
+    sentence = (
+        f"Despite variation in individual joint angles across analyzed frames, "
+        f"the combined RULA score remained consistently at {most_common}, "
+        f"reflecting a stable posture pattern throughout the task."
+    )
+
+    score_summary = report.setdefault("score_summary", {})
+    existing = str(score_summary.get("interpretation") or "").strip()
+
+    if sentence not in existing:
+        score_summary["interpretation"] = (existing + " " + sentence).strip()
+
+    report["stable_rula_score_note"] = {
+        "triggered": True,
+        "dominant_score": most_common,
+        "score_share": round(share, 3),
+        "variance": round(variance, 4),
+    }
+
+    return report
+
+
+def _vergo_pick_target_module(report):
+    text = _vergo_flatten_text(report.get("risk_exposure_analysis") or report.get("section_3") or report).lower()
+
+    checks = [
+        (
+            "Module 14: Using Handheld Devices",
+            ["wrist", "hand", "grip", "pinch", "forearm", "tool", "device", "scanner", "knife", "handle", "wrist deviation"],
+            "This module is relevant because the task involves hand, wrist, grip, tool, or equipment-handling exposure. Although the task may not involve a mobile device, the module supports neutral wrist positioning and reduced cumulative hand and forearm loading."
+        ),
+        (
+            "Module 12: Seated Posture",
+            ["neck", "head posture", "neck flexion", "forward head"],
+            "This module is relevant because the task shows neck or head posture exposure. It supports awareness of head position, viewing angle, and upper-back posture during sustained or repetitive work."
+        ),
+        (
+            "Module 11: Working Above the Shoulders",
+            ["shoulder", "overhead", "above shoulder", "elevated arm", "reaching"],
+            "This module is relevant because the task involves shoulder elevation, overhead work, or extended reaching. It supports strategies to reduce sustained shoulder loading and improve work positioning."
+        ),
+        (
+            "Module 10: Stepping Mechanics",
+            ["kneel", "kneeling", "lower limb", "leg", "squat", "crouch", "step", "walking"],
+            "This module is relevant because the task involves lower-limb posture, stepping, crouching, kneeling, or movement mechanics. It supports safer lower-body positioning during task execution."
+        ),
+        (
+            "Module 2: Power Stance & Power Zone",
+            ["trunk", "back", "lower back", "lumbar", "bending", "trunk flexion", "forward flexion", "lifting", "power zone"],
+            "This module is relevant because the task involves trunk flexion, lower-back exposure, lifting, or work outside the power zone. It supports improved body positioning and material-handling setup."
+        ),
+    ]
+
+    for module, keywords, rationale in checks:
+        if any(k in text for k in keywords):
+            return module, rationale
+
+    return (
+        "Module 2: Power Stance & Power Zone",
+        "This module is recommended as a practical baseline because it supports safer positioning, work height awareness, and use of the power zone during manual or repetitive tasks."
+    )
+
+
+def _vergo_apply_dynamic_training_modules(report):
+    target_module, target_rationale = _vergo_pick_target_module(report)
+
+    modules = [
+        {
+            "module": "Module 1: Warm-Up",
+            "rationale": "This module is recommended as a foundational prevention module to prepare workers for repetitive, sustained, or physically demanding tasks."
+        },
+        {
+            "module": "Module 2: Power Stance & Power Zone",
+            "rationale": "This module is recommended because power-zone positioning and stable stance are broadly relevant to reducing awkward posture and improving task setup."
+        },
+    ]
+
+    if target_module not in [m["module"] for m in modules]:
+        modules.append({
+            "module": target_module,
+            "rationale": target_rationale
+        })
+    else:
+        for item in modules:
+            if item["module"] == target_module:
+                item["rationale"] = target_rationale
+
+    report["training_modules"] = modules
+    return report
+
+
+def apply_vergo_quality_rules(report):
+    if not isinstance(report, dict):
+        return report
+    report = _vergo_add_stable_rula_sentence(report)
+    report = _vergo_apply_dynamic_training_modules(report)
+    return report

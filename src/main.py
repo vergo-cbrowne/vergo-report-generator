@@ -15,6 +15,7 @@ import pdf_builder
 import re
 import training_modules
 import risk_interpretation
+import vergo_quality_rules
 
 
 def parse_args():
@@ -780,7 +781,8 @@ def main():
     html_report_path = output_dir / "vergo_report.html"
     print("Normalizing risk interpretation and assessment method...")
     report_for_rendering = risk_interpretation.normalize_risk_language(report_for_rendering)
-
+    print("Applying Vergo quality rules: stable RULA interpretation and dynamic training modules...")
+    report_for_rendering = vergo_quality_rules.apply_quality_rules(report_for_rendering)
     print("Validating targeted Vergo training modules...")
     report_for_rendering = training_modules.normalize_training_videos(report_for_rendering)
     html_report_builder.build_html_report(report_for_rendering, html_report_path)

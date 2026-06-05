@@ -341,3 +341,30 @@ It is acceptable for similar ergonomic principles to appear across reports, but 
 If the video duration or frame sample appears limited, describe the report as a screening-level review and avoid overgeneralizing.
 
 If the recording appears to include multiple distinct task components, note that the assessment reflects the observed combined task sequence and recommend separating future assessments by task phase where useful.
+
+
+## Vergo Dynamic Training Module Selection Rule
+
+For Section 6, Module 1 and Module 2 may remain baseline recommendations. The third recommendation must be selected based on the primary risk region identified in Section 3:
+- Wrist deviation, hand posture, grip, pinch, handheld tool, equipment handling, or forearm exposure -> Module 14: Using Handheld Devices.
+- Neck flexion, forward head posture, or head-position exposure -> Module 12: Seated Posture, unless a more specific neck/upper-back module is available.
+- Trunk flexion, lower-back exposure, lifting, or work outside the power zone -> Module 2: Power Stance & Power Zone.
+- Overhead reach, shoulder elevation, or elevated arm posture -> Module 11: Working Above the Shoulders.
+- Kneeling, crouching, lower-limb posture, stepping, or walking mechanics -> Module 10: Stepping Mechanics.
+- Keyboard/mouse or seated workstation exposure -> Module 15: Using a Keyboard & Mouse.
+- Vehicle or seated driving exposure -> Module 13: Seated Driving Posture.
+
+Each recommended module must include 1–2 sentences explaining why it applies to the observed task findings. If Module 14 is recommended for tool, equipment, handle, scanner, knife, grip, or wrist posture exposure, clearly explain that it is being recommended for hand/wrist positioning and not because a mobile phone or handheld digital device is necessarily being used.
+
+
+## Vergo Quality Control Rules
+
+RULA zero-variance transparency:
+- If all analyzed frames produce the same final RULA score, Section 2 must explicitly explain that joint angles may vary while the final RULA scoring table can still produce the same combined score.
+- Do not add this sentence when frame-level final scores vary.
+
+Training module selection:
+- Module 1: Warm-Up remains a fixed baseline recommendation.
+- The remaining modules must be selected based on the dominant risk regions in Section 3.
+- Every module recommendation must include 1–2 sentences explaining why it applies.
+- If Module 14 is recommended for tools, handles, scanners, knives, grip, wrist deviation, or equipment handling, explain that the module is being recommended for hand/wrist positioning and not because the task necessarily uses a mobile phone or digital handheld device.
