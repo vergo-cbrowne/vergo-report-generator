@@ -311,3 +311,31 @@ def load_task_notes(service, folder_id: str) -> Dict[str, Any]:
         "combined_text": _truncate_text(combined_text, max_chars=12000),
         "files": loaded_files,
     }
+
+def load_local_assessment_folder(folder_path):
+    """Load an extracted local assessment folder containing report.json and snapshots."""
+    from pathlib import Path
+    import json
+
+    folder = Path(folder_path)
+
+    report_json = folder / "report.json"
+    if not report_json.exists():
+        matches = list(folder.rglob("report.json"))
+        if not matches:
+            raise FileNotFoundError(f"No report.json found in {folder}")
+        report_json = matches[0]
+        folder = report_json.parent
+
+    report_data = json.loads(report_json.read_text())
+
+    snapshot_files = []
+    for pattern in ["*.png", "*.jpg", "*.jpeg"]:
+        snapshot_files.extend(folder.rglob(pattern))
+
+    snapshot_files = [
+        str(p) for p in snapshot_files
+        if "__MACOSX" not in str(p)
+    ]
+
+    return report_data, snapshot_files

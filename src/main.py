@@ -20,8 +20,8 @@ import vergo_quality_rules
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run the Vergo PDF report generator workflow.")
-    parser.add_argument("--assessment-folder-id", required=True, help="Google Drive folder ID for the assessment")
-    parser.add_argument("--credentials-path", required=True, help="Path to service-account.json credentials")
+    parser.add_argument("--assessment-folder-id", required=False, help="Google Drive folder ID for the assessment")\n    parser.add_argument("--local-assessment-folder", required=False, help="Local extracted assessment folder path")
+    parser.add_argument("--credentials-path", required=False, default="credentials/service-account.json", help="Path to service-account.json credentials")
     parser.add_argument("--prompt-path", required=True, help="Path to the prompt markdown file")
     parser.add_argument("--model", required=True, help="OpenAI model to use")
     return parser.parse_args()
@@ -708,14 +708,20 @@ def main():
     load_dotenv()
     print("Loaded environment variables.")
 
-    print("Connecting to Google Drive...")
-    service = google_drive.create_drive_service(args.credentials_path)
+    if args.local_assessment_folder:
+        print("Loading local assessment folder...")
+        report_data, snapshot_files = assessment_loader.load_local_assessment_folder(
+            args.local_assessment_folder
+        )
+    else:
+        print("Connecting to Google Drive...")
+        service = google_drive.create_drive_service(args.credentials_path)
 
-    print("Loading assessment folder...")
-    report_data, snapshot_files = assessment_loader.load_assessment_folder(
-        service,
-        args.assessment_folder_id,
-    )
+        print("Loading assessment folder...")
+        report_data, snapshot_files = assessment_loader.load_assessment_folder(
+            service,
+            args.assessment_folder_id,
+        )
 
     print("Found report.json")
     print("Found snapshots")
@@ -783,10 +789,29 @@ def main():
     report_for_rendering = risk_interpretation.normalize_risk_language(report_for_rendering)
     print("Applying Vergo quality rules: stable RULA interpretation and dynamic training modules...")
     report_for_rendering = vergo_quality_rules.apply_quality_rules(report_for_rendering)
+    report_for_rendering = vergo_quality_rules.scrub_vergo_module14(report_for_rendering)
     print("Validating targeted Vergo training modules...")
     report_for_rendering = training_modules.normalize_training_videos(report_for_rendering)
     html_report_builder.build_html_report(report_for_rendering, html_report_path)
     print(f"Local HTML report saved to: {html_report_path.resolve()}")
+
+    print("Preparing final HTML safety checks...")
+    from pathlib import Path as _Path
+    import re as _re
+
+    _html_path = _Path("output/vergo_report.html")
+    if _html_path.exists():
+        _html_text = _html_path.read_text(errors="ignore")
+
+        _html_text = _re.sub(
+            r'\\s*<h3[^>]*>\\s*Module 14: Using Handheld Devices\\s*</h3>.*?(?=\\s*<h3|\\s*<h2|\\s*<h1|\\s*</section>|\\s*</body>)',
+            '',
+            _html_text,
+            flags=_re.I | _re.S,
+        )
+
+        _html_text = _html_text.replace("Module 14: Using Handheld Devices", "")
+        _html_path.write_text(_html_text)
 
     print("Creating PDF report...")
     pdf_report_path = output_dir / "vergo_report.pdf"

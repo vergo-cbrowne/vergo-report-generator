@@ -145,8 +145,6 @@ Additional notes:
             "src/main.py",
             "--assessment-folder",
             str(assessment_folder),
-            "--credentials-path",
-            "credentials/service-account.json",
             "--prompt-path",
             "prompts/vergo_master_report_prompt.md",
             "--model",
