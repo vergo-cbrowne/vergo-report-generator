@@ -66,7 +66,7 @@ def main():
 
     # Try the most common existing generator signatures
     try:
-        html = report_generator.generate_report_html(
+        html = report_generator.generate_report(
             report_data=report_data,
             snapshot_files=snapshot_files,
             prompt_path=args.prompt_path,
@@ -74,7 +74,7 @@ def main():
         )
     except TypeError:
         try:
-            html = report_generator.generate_report_html(
+            html = report_generator.generate_report(
                 report_data,
                 snapshot_files,
                 args.prompt_path,
