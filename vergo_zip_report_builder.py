@@ -142,7 +142,7 @@ Additional notes:
     result = subprocess.run(
         [
             "python3",
-            "src/main.py",
+            "local_main.py",
             "--local-assessment-folder",
             str(assessment_folder),
             "--prompt-path",
