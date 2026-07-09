@@ -20,7 +20,8 @@ import vergo_quality_rules
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run the Vergo PDF report generator workflow.")
-    parser.add_argument("--assessment-folder-id", required=False, help="Google Drive folder ID for the assessment")\n    parser.add_argument("--local-assessment-folder", required=False, help="Local extracted assessment folder path")
+    parser.add_argument("--assessment-folder-id", required=False, help="Google Drive folder ID for the assessment")
+    parser.add_argument("--local-assessment-folder", required=False, help="Local extracted assessment folder path")
     parser.add_argument("--credentials-path", required=False, default="credentials/service-account.json", help="Path to service-account.json credentials")
     parser.add_argument("--prompt-path", required=True, help="Path to the prompt markdown file")
     parser.add_argument("--model", required=True, help="OpenAI model to use")
