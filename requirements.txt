@@ -8,3 +8,4 @@ python-docx
 pillow
 streamlit
 playwright
+xhtml2pdf
