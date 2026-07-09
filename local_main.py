@@ -88,7 +88,11 @@ def main():
                 args.model,
             )
 
-    html_path.write_text(html)
+    if isinstance(html, dict):
+    import json
+    html = "<pre>" + json.dumps(html, indent=2, ensure_ascii=False) + "</pre>"
+
+html_path.write_text(html)
 
     print("Building PDF...")
     try:
