@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent / 'src'))
 from dotenv import load_dotenv
 
 import report_generator
+import html_report_builder
 import pdf_builder
 
 load_dotenv()
@@ -88,20 +89,16 @@ def main():
                 args.model,
             )
 
-    if isinstance(html, dict):
-    import json
-    html = "<pre>" + json.dumps(html, indent=2, ensure_ascii=False) + "</pre>"
-
-html_path.write_text(html)
+    html_report_builder.build_html_report(html, html_path)
 
     print("Building PDF...")
     try:
-        pdf_builder.build_pdf(str(html_path), str(pdf_path))
+        pdf_builder.build_pdf_from_html(html_path, pdf_path)
     except AttributeError:
         try:
-            pdf_builder.create_pdf(str(html_path), str(pdf_path))
+            pdf_builder.build_pdf_from_html(html_path, pdf_path)
         except AttributeError:
-            pdf_builder.html_to_pdf(str(html_path), str(pdf_path))
+            pdf_builder.build_pdf_from_html(html_path, pdf_path)
 
     print(f"Report complete: {pdf_path}")
 
