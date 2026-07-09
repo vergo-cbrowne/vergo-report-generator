@@ -143,7 +143,7 @@ Additional notes:
         [
             "python3",
             "src/main.py",
-            "--assessment-folder",
+            "--local-assessment-folder",
             str(assessment_folder),
             "--prompt-path",
             "prompts/vergo_master_report_prompt.md",
