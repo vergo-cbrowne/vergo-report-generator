@@ -1,5 +1,6 @@
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -101,6 +102,13 @@ def main():
             pdf_builder.build_pdf_from_html(html_path, pdf_path)
 
     print(f"Report complete: {pdf_path}")
+
+# Cleanup temporary assessment folder
+try:
+    if "tmp_dir" in locals():
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+except Exception:
+    pass
 
 
 if __name__ == "__main__":
