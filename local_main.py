@@ -110,6 +110,13 @@ try:
 except Exception:
     pass
 
+# Cleanup temporary assessment folder
+try:
+    if "tmp_dir" in locals():
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+except Exception:
+    pass
+
 
 if __name__ == "__main__":
     main()
